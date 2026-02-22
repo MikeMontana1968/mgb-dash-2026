@@ -1,0 +1,5 @@
+# MGB Dash 2026 — GPS Display Dependencies
+python-can>=4.0
+pyserial>=3.5
+ephem>=4.1
+Pillow>=10.0

@@ -1,0 +1,9 @@
+{
+  "name": "MGB Dash",
+  "short_name": "MGB",
+  "description": "MGB EV Dashboard — Live vehicle data over Bluetooth",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#4fc3f7"
+}

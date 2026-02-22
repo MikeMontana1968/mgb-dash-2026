@@ -1,0 +1,2 @@
+# MGB Dash 2026 — CLI Diagnostic Tools Dependencies
+python-can>=4.0

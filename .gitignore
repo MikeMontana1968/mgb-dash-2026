@@ -1,0 +1,37 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+firmware/include/README
+firmware/test/README
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Node (phone-app)
+node_modules/
