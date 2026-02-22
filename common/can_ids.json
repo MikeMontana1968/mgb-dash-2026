@@ -119,6 +119,16 @@
         "byte_0": "0=DAYLIGHT, 1=EARLY_TWILIGHT, 2=LATE_TWILIGHT, 3=DARKNESS",
         "bytes_1_7": "Reserved (0x00)"
       }
+    },
+    "0x730": {
+      "name": "SELF_TEST",
+      "source": "any",
+      "rate_hz": "on-demand",
+      "description": "Triggers self-test on receiving modules. ESP32 gauges: needle sweep + LED ring pattern. Raspberry Pis: TBD display/system test.",
+      "payload": {
+        "byte_0": "Target module: 0xFF=ALL, or ASCII first char of role name (F=FUEL, A=AMPS, T=TEMP, S=SPEED, B=BODY, D=DASH, G=GPS)",
+        "bytes_1_7": "Reserved (0x00)"
+      }
     }
   },
 

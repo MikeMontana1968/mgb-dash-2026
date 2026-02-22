@@ -56,6 +56,10 @@ GEAR_3 = 3
 GEAR_4 = 4
 GEAR_UNKNOWN = 0xFF
 
+# ── Self-Test Command ──────────────────────────────────────────────
+CAN_ID_SELF_TEST      = 0x730  # On-demand self-test trigger
+SELF_TEST_TARGET_ALL  = 0xFF   # byte 0 = 0xFF → all modules
+
 # ── GPS Module ──────────────────────────────────────────────────────
 CAN_ID_GPS_SPEED         = 0x720  # Speed (64-bit double, mph)
 CAN_ID_GPS_TIME          = 0x721  # Seconds since midnight UTC

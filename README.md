@@ -353,7 +353,8 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | `0x724` | GPS_LONGITUDE | GPS Display | 2 Hz | `[lon(8B)]` — 64-bit double, decimal degrees |
 | `0x725` | GPS_ELEVATION | GPS Display | 2 Hz | `[elev(8B)]` — 64-bit double, meters ASL |
 | `0x726` | GPS_AMBIENT_LIGHT | GPS Display | 2 Hz | `[cat(1B)] [rsvd(7B)]` — 0–3 |
-| `0x730`–`0x73F` | *Reserved* | — | — | Future use |
+| `0x730` | SELF_TEST | Any (diagnostic) | On-demand | `[target(1B)] [rsvd(7B)]` — 0xFF=ALL or role initial |
+| `0x731`–`0x73F` | *Reserved* | — | — | Future use |
 
 #### BODY_STATE Bit Flags (byte 0 of `0x710`)
 

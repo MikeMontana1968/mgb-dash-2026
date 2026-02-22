@@ -57,6 +57,10 @@ constexpr uint8_t GEAR_3       = 3;
 constexpr uint8_t GEAR_4       = 4;
 constexpr uint8_t GEAR_UNKNOWN = 0xFF;
 
+// ── Self-Test Command ──────────────────────────────────────────────
+constexpr uint32_t CAN_ID_SELF_TEST      = 0x730;  // On-demand self-test trigger
+constexpr uint8_t  SELF_TEST_TARGET_ALL  = 0xFF;   // byte 0 = 0xFF → all modules
+
 // ── GPS Module ──────────────────────────────────────────────────────
 constexpr uint32_t CAN_ID_GPS_SPEED         = 0x720;  // Speed (64-bit double, mph)
 constexpr uint32_t CAN_ID_GPS_TIME          = 0x721;  // Seconds since midnight UTC
