@@ -1,30 +1,30 @@
 /**
  * MGB Dash 2026 — LED Ring Library Implementation
+ *
+ * Adafruit NeoPixel driver for WS2812B rings (12 pixels, GRB, 800 KHz).
  */
 
 #include "LedRing.h"
 
 void LedRing::init(int dataPin, int numLeds) {
     numLeds_ = numLeds;
-    leds_ = new CRGB[numLeds];
-
-    // FastLED.addLeds requires a compile-time pin, but we use a runtime
-    // approach here. In practice, LED_DATA_PIN is a build-time constant.
-    FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds_, numLeds_);
-    FastLED.setBrightness(128);
-    setAll(CRGB::Black);
+    strip_ = new Adafruit_NeoPixel(numLeds, dataPin, NEO_GRB + NEO_KHZ800);
+    strip_->begin();
+    strip_->setBrightness(128);
+    setAll(0, 0, 0);
     show();
 }
 
-void LedRing::setAll(CRGB color) {
+void LedRing::setAll(uint8_t r, uint8_t g, uint8_t b) {
+    uint32_t color = strip_->Color(r, g, b);
     for (int i = 0; i < numLeds_; i++) {
-        leds_[i] = color;
+        strip_->setPixelColor(i, color);
     }
 }
 
-void LedRing::setPixel(int index, CRGB color) {
+void LedRing::setPixel(int index, uint8_t r, uint8_t g, uint8_t b) {
     if (index >= 0 && index < numLeds_) {
-        leds_[index] = color;
+        strip_->setPixelColor(index, strip_->Color(r, g, b));
     }
 }
 
@@ -62,35 +62,39 @@ void LedRing::stopAnimation() {
     hazardMode_ = false;
 }
 
-void LedRing::setWarning(CRGB color) {
+void LedRing::setWarning(uint8_t r, uint8_t g, uint8_t b) {
     warningActive_ = true;
-    warningColor_ = color;
+    warnR_ = r;
+    warnG_ = g;
+    warnB_ = b;
 }
 
 void LedRing::clearWarning() {
     warningActive_ = false;
-    warningColor_ = CRGB::Black;
+    warnR_ = 0;
+    warnG_ = 0;
+    warnB_ = 0;
 }
 
 void LedRing::runSelfTestChase() {
     // Sequential green chase: light each LED one at a time
     for (int i = 0; i < numLeds_; i++) {
-        setAll(CRGB::Black);
-        leds_[i] = CRGB::Green;
+        setAll(0, 0, 0);
+        setPixel(i, 0, 255, 0);
         show();
         delay(40);
     }
     // Flash all green twice
     for (int f = 0; f < 2; f++) {
-        setAll(CRGB::Green);
+        setAll(0, 255, 0);
         show();
         delay(150);
-        setAll(CRGB::Black);
+        setAll(0, 0, 0);
         show();
         delay(150);
     }
     // Go dark
-    setAll(CRGB::Black);
+    setAll(0, 0, 0);
     show();
 }
 
@@ -112,10 +116,10 @@ void LedRing::update() {
     if (bluePulse_) {
         // Sine-wave blue breathing, ~2s period, brightness 20–255
         float phase = (float)(millis() % 2000) / 2000.0f * 2.0f * 3.14159265f;
-        uint8_t brightness = (uint8_t)(137.5f + 117.5f * sinf(phase));  // range 20–255
-        setAll(CRGB(0, 0, brightness));
+        uint8_t brightness = (uint8_t)(137.5f + 117.5f * sinf(phase));
+        setAll(0, 0, brightness);
     } else if (warningActive_) {
-        setAll(warningColor_);
+        setAll(warnR_, warnG_, warnB_);
     } else if (animating_) {
         // TODO: Implement turn signal sweep and hazard flash animations
         // For now, simple amber flash placeholder
@@ -124,9 +128,9 @@ void LedRing::update() {
             lastAnimStepMs_ = now;
             animStep_++;
             if (animStep_ % 2 == 0) {
-                setAll(CRGB(255, 165, 0));  // amber
+                setAll(255, 165, 0);  // amber
             } else {
-                setAll(CRGB::Black);
+                setAll(0, 0, 0);
             }
         }
     } else {
@@ -136,10 +140,9 @@ void LedRing::update() {
 }
 
 void LedRing::show() {
-    FastLED.show();
+    strip_->show();
 }
 
 void LedRing::applyAmbient_() {
-    CRGB white = CRGB(ambientLevel_, ambientLevel_, ambientLevel_);
-    setAll(white);
+    setAll(ambientLevel_, ambientLevel_, ambientLevel_);
 }

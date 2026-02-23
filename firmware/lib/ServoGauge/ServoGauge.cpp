@@ -10,6 +10,7 @@ void ServoGauge::init(int pin) {
     currentAngle_ = 0;
     targetAngle_ = 0;
     smoothedAngle_ = 0.0f;
+    lastUpdateMs_ = millis();
     initialized_ = true;
 }
 
@@ -47,15 +48,35 @@ void ServoGauge::runSelfTestSweep() {
     servo_.write(0);
 }
 
-void ServoGauge::setSmoothing(float factor) {
-    smoothingFactor_ = constrain(factor, 0.01f, 1.0f);
+void ServoGauge::writeDirect(int angle) {
+    if (!initialized_) return;
+    angle = constrain(angle, 0, 180);
+    servo_.write(angle);
+    currentAngle_ = angle;
+    targetAngle_ = angle;
+    smoothedAngle_ = (float)angle;
+    lastUpdateMs_ = millis();
+}
+
+void ServoGauge::setSmoothing(float seconds) {
+    smoothingTau_ = constrain(seconds, 0.05f, 5.0f);
 }
 
 void ServoGauge::update() {
     if (!initialized_) return;
 
-    // Exponential moving average for smooth needle movement
-    smoothedAngle_ += smoothingFactor_ * ((float)targetAngle_ - smoothedAngle_);
+    unsigned long now = millis();
+    float dt = (now - lastUpdateMs_) / 1000.0f;
+    lastUpdateMs_ = now;
+
+    // Clamp dt to avoid jumps after long pauses (e.g. self-test)
+    if (dt > 0.5f) dt = 0.5f;
+
+    // Time-based EMA: consistent damping regardless of loop speed.
+    // alpha approaches 1.0 for large dt, 0.0 for small dt.
+    float alpha = 1.0f - expf(-dt / smoothingTau_);
+    smoothedAngle_ += alpha * ((float)targetAngle_ - smoothedAngle_);
+
     currentAngle_ = (int)(smoothedAngle_ + 0.5f);
     currentAngle_ = constrain(currentAngle_, 0, 180);
 

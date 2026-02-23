@@ -2,12 +2,14 @@
 /**
  * MGB Dash 2026 — WS2812B LED Ring Library
  *
- * Drives LED ring for gauge backlighting, turn signals,
+ * Drives 12-pixel LED ring for gauge backlighting, turn signals,
  * warning colors, and ambient light blending.
+ *
+ * Uses Adafruit NeoPixel library (NEO_GRB, 800 KHz).
  */
 
 #include <Arduino.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 #include "can_ids.h"
 
 class LedRing {
@@ -20,10 +22,10 @@ public:
     void init(int dataPin, int numLeds);
 
     /** Set all LEDs to a single color. */
-    void setAll(CRGB color);
+    void setAll(uint8_t r, uint8_t g, uint8_t b);
 
     /** Set a single LED. */
-    void setPixel(int index, CRGB color);
+    void setPixel(int index, uint8_t r, uint8_t g, uint8_t b);
 
     /** Set ambient white backlight level (0–255). Blended with other effects. */
     void setAmbientLevel(uint8_t brightness);
@@ -44,7 +46,7 @@ public:
     void stopAnimation();
 
     /** Set warning color (overrides ambient, e.g., bright red for alerts). */
-    void setWarning(CRGB color);
+    void setWarning(uint8_t r, uint8_t g, uint8_t b);
 
     /** Clear warning, return to ambient. */
     void clearWarning();
@@ -71,7 +73,7 @@ public:
     void show();
 
 private:
-    CRGB* leds_ = nullptr;
+    Adafruit_NeoPixel* strip_ = nullptr;
     int numLeds_ = 0;
     uint8_t ambientLevel_ = 128;
     bool animating_ = false;
@@ -79,7 +81,7 @@ private:
     bool turnLeft_ = false;
     bool warningActive_ = false;
     bool bluePulse_ = false;
-    CRGB warningColor_ = CRGB::Black;
+    uint8_t warnR_ = 0, warnG_ = 0, warnB_ = 0;
     unsigned long lastAnimStepMs_ = 0;
     int animStep_ = 0;
 

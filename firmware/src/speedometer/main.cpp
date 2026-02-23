@@ -35,7 +35,7 @@ void setup() {
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
     ledRing.init(LED_DATA_PIN, LED_COUNT);
 
-    // TODO: Init stepper motor driver
+    // TODO: Init stepper motor driver (28BYJ-48 + ULN2003)
     // TODO: Init servo for gear indicator disc
     // TODO: Init eInk display (SPI, tri-color 1.54" 200x200)
 

@@ -60,9 +60,9 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ESP32-WROOM-32 DevKit | — | — | |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO21**, RX→**GPIO22** | 5V logic, needs 5V supply |
-| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO14** | LEDC channel |
-| LED Ring | WS2812B, 24 LEDs | Data | **GPIO13** | Via RMT peripheral |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
+| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | LEDC channel |
+| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
 
@@ -93,9 +93,9 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ESP32-WROOM-32 DevKit | — | — | |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO21**, RX→**GPIO22** | 5V logic, needs 5V supply |
-| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO14** | LEDC channel |
-| LED Ring | WS2812B, 24 LEDs | Data | **GPIO13** | Via RMT peripheral |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
+| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | LEDC channel |
+| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
 
@@ -124,9 +124,9 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ESP32-WROOM-32 DevKit | — | — | |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO21**, RX→**GPIO22** | 5V logic, needs 5V supply |
-| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO14** | LEDC channel |
-| LED Ring | WS2812B, 24 LEDs | Data | **GPIO13** | Via RMT peripheral |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
+| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | LEDC channel |
+| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
 
@@ -155,10 +155,10 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ESP32-WROOM-32 DevKit | — | — | |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO21**, RX→**GPIO22** | 5V logic, needs 5V supply |
-| LED Ring | WS2812B | Data | **GPIO13** | Larger ring than servo gauges, LED count TBD |
-| Gear Indicator Servo | SG90 or MG90S, 180° | PWM | **GPIO14** | Rotates disc to show 1/2/3/4/R/N |
-| Stepper Driver | A4988 or DRV8825 | GPIO | STEP→**GPIO25**, DIR→**GPIO26**, EN→**GPIO27** | Drives slot-machine speed drum |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
+| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
+| Gear Indicator Servo | SG90 or MG90S, 180° | PWM | **GPIO27** | Rotates disc to show 1/2/3/4/R/N |
+| Stepper Motor | 28BYJ-48 + ULN2003 | GPIO | STEP→**GPIO25**, DIR→**GPIO26**, EN→**GPIO27** | Drives slot-machine speed drum |
 | eInk Display | Waveshare 1.54" tri-color | SPI | MOSI→**GPIO23**, SCK→**GPIO18**, CS→**GPIO5**, DC→**GPIO17**, RST→**GPIO16**, BUSY→**GPIO4** | 200x200, black/white/red, 3.3V |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
@@ -191,7 +191,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ESP32-WROOM-32 DevKit | — | — | BLE built-in |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO21**, RX→**GPIO22** | 5V logic, needs 5V supply |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
 | Hall Effect Sensor | A3144 or OH137 | Interrupt | **GPIO27** | Driveshaft, 1 pulse/rev, pull-up |
 | Key On Input | PC817 optocoupler | Digital In | **GPIO32** | 12V → 3.3V isolated |
 | Brake Input | PC817 optocoupler | Digital In | **GPIO33** | 12V → 3.3V isolated |

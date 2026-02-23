@@ -38,11 +38,16 @@ public:
     /** Blocking self-test: sweep 0→180→0 (~1.8s). Call from setup(). */
     void runSelfTestSweep();
 
+    /** Write angle directly, bypassing smoothing. For coordinated self-test. */
+    void writeDirect(int angle);
+
     /**
-     * Enable smoothing (exponential moving average).
-     * @param factor  0.0 = no movement, 1.0 = instant (default 0.15)
+     * Set needle damping time constant in seconds.
+     * The needle reaches ~63% of a new value in one time constant,
+     * ~95% in three time constants.  Default 0.4s (~1.2s to settle).
+     * @param seconds  Time constant (0.05–5.0).  Lower = snappier.
      */
-    void setSmoothing(float factor);
+    void setSmoothing(float seconds);
 
     /**
      * Call every loop iteration for smooth servo movement.
@@ -59,7 +64,8 @@ private:
     float maxVal_ = 100.0f;
     int targetAngle_ = 0;
     int currentAngle_ = 0;
-    float smoothingFactor_ = 0.15f;
+    float smoothingTau_ = 0.4f;       // time constant in seconds
     float smoothedAngle_ = 0.0f;
+    unsigned long lastUpdateMs_ = 0;
     bool initialized_ = false;
 };
