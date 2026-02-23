@@ -1,0 +1,17 @@
+[project]
+name = "mgb-gps-display"
+version = "0.1.0"
+description = "MGB Dash 2026 — GPS Display (Pi 3B + Waveshare 1.28\" GC9A01 + NEO-6M GPS)"
+requires-python = ">=3.9"
+dependencies = [
+    "python-can>=4.0",
+    "gpsd-py3>=0.3.0",
+    "ephem>=4.1",
+    "Pillow>=10.0",
+    "numpy>=1.19",
+    "spidev>=3.5",
+    "RPi.GPIO>=0.7.0",
+]
+
+[project.scripts]
+mgb-gps-display = "main:main"

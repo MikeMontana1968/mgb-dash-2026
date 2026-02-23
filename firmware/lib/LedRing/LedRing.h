@@ -49,6 +49,18 @@ public:
     /** Clear warning, return to ambient. */
     void clearWarning();
 
+    /** Blocking self-test: green chase around ring (~1.5s). Call from setup(). */
+    void runSelfTestChase();
+
+    /** Start blue breathing fault animation (CAN silence). */
+    void startBluePulse();
+
+    /** Stop blue breathing fault animation. */
+    void stopBluePulse();
+
+    /** True if blue pulse fault mode is active. */
+    bool isBluePulsing() const;
+
     /**
      * Call every loop iteration. Drives animations and pushes to LEDs.
      * Must be called frequently for smooth animations.
@@ -66,6 +78,7 @@ private:
     bool hazardMode_ = false;
     bool turnLeft_ = false;
     bool warningActive_ = false;
+    bool bluePulse_ = false;
     CRGB warningColor_ = CRGB::Black;
     unsigned long lastAnimStepMs_ = 0;
     int animStep_ = 0;

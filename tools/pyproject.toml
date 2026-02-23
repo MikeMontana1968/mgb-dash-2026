@@ -1,0 +1,17 @@
+[project]
+name = "mgb-tools"
+version = "0.1.0"
+description = "MGB Dash 2026 — CLI Diagnostic Tools"
+requires-python = ">=3.9"
+dependencies = [
+    "python-can>=4.0",
+]
+
+[project.scripts]
+can-monitor = "can_monitor:main"
+can-emulate = "can_emulate:main"
+can-inject = "can_inject:main"
+can-replay = "can_replay:main"
+can-stress = "can_stress:main"
+can-cell-query = "can_cell_query:main"
+can-scan = "can_scan:main"

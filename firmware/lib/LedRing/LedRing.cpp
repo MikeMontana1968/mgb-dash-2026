@@ -72,8 +72,49 @@ void LedRing::clearWarning() {
     warningColor_ = CRGB::Black;
 }
 
+void LedRing::runSelfTestChase() {
+    // Sequential green chase: light each LED one at a time
+    for (int i = 0; i < numLeds_; i++) {
+        setAll(CRGB::Black);
+        leds_[i] = CRGB::Green;
+        show();
+        delay(40);
+    }
+    // Flash all green twice
+    for (int f = 0; f < 2; f++) {
+        setAll(CRGB::Green);
+        show();
+        delay(150);
+        setAll(CRGB::Black);
+        show();
+        delay(150);
+    }
+    // Go dark
+    setAll(CRGB::Black);
+    show();
+}
+
+void LedRing::startBluePulse() {
+    bluePulse_ = true;
+    animating_ = false;
+    warningActive_ = false;
+}
+
+void LedRing::stopBluePulse() {
+    bluePulse_ = false;
+}
+
+bool LedRing::isBluePulsing() const {
+    return bluePulse_;
+}
+
 void LedRing::update() {
-    if (warningActive_) {
+    if (bluePulse_) {
+        // Sine-wave blue breathing, ~2s period, brightness 20–255
+        float phase = (float)(millis() % 2000) / 2000.0f * 2.0f * 3.14159265f;
+        uint8_t brightness = (uint8_t)(137.5f + 117.5f * sinf(phase));  // range 20–255
+        setAll(CRGB(0, 0, brightness));
+    } else if (warningActive_) {
         setAll(warningColor_);
     } else if (animating_) {
         // TODO: Implement turn signal sweep and hazard flash animations

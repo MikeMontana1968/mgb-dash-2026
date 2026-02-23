@@ -60,6 +60,14 @@ GEAR_UNKNOWN = 0xFF
 CAN_ID_SELF_TEST      = 0x730  # On-demand self-test trigger
 SELF_TEST_TARGET_ALL  = 0xFF   # byte 0 = 0xFF → all modules
 
+# ── Logging ───────────────────────────────────────────────────────
+CAN_ID_LOG              = 0x731  # Structured log event
+CAN_ID_LOG_TEXT         = 0x732  # Log text continuation (up to 7 frames)
+LOG_DLC                 = 8      # LOG frame is always 8 bytes
+LOG_TEXT_DLC            = 8      # LOG_TEXT frame is always 8 bytes
+LOG_TEXT_MAX_FRAMES     = 7      # Max text continuation frames
+LOG_TEXT_CHARS_PER_FRAME = 7     # 7 ASCII chars per text frame
+
 # ── GPS Module ──────────────────────────────────────────────────────
 CAN_ID_GPS_SPEED         = 0x720  # Speed (64-bit double, mph)
 CAN_ID_GPS_TIME          = 0x721  # Seconds since midnight UTC

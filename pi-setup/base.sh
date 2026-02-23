@@ -23,9 +23,10 @@ apt-get install -y \
     vim \
     htop
 
-# Install python-can
-echo "[3/5] Installing python-can..."
-pip3 install python-can --break-system-packages
+# Install uv package manager
+echo "[3/5] Installing uv package manager..."
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 
 # Enable SocketCAN kernel modules
 echo "[4/5] Configuring SocketCAN..."

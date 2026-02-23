@@ -15,6 +15,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-replay")
 
 # TODO: Import python-can
 # TODO: Record mode: capture all CAN frames with timestamps to file
@@ -35,8 +38,10 @@ def main():
     play.add_argument("--speed", type=float, default=1.0, help="Playback speed multiplier")
 
     args = parser.parse_args()
-    print(f"[CAN-REPLAY] {args.command or 'no command'} on {args.interface}...")
-    print("[CAN-REPLAY] Not yet implemented — scaffold only.")
+
+    logger.critical("CAN replay starting...")
+    logger.info("%s on %s...", args.command or "no command", args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

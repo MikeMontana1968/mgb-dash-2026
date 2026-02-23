@@ -3,6 +3,9 @@
  */
 
 #include "CanBus.h"
+#include "esp_log.h"
+
+static const char* TAG = "CAN";
 
 bool CanBus::init(int txPin, int rxPin, uint32_t speed) {
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
@@ -23,19 +26,19 @@ bool CanBus::init(int txPin, int rxPin, uint32_t speed) {
 
     esp_err_t err = twai_driver_install(&g_config, &t_config, &f_config);
     if (err != ESP_OK) {
-        Serial.printf("[CAN] Driver install failed: 0x%X\n", err);
+        ESP_LOGE(TAG, "Driver install failed: 0x%X", err);
         return false;
     }
 
     err = twai_start();
     if (err != ESP_OK) {
-        Serial.printf("[CAN] Start failed: 0x%X\n", err);
+        ESP_LOGE(TAG, "Start failed: 0x%X", err);
         return false;
     }
 
     installed_ = true;
     busOff_ = false;
-    Serial.printf("[CAN] Initialized at %lu bps (TX=%d, RX=%d)\n", speed, txPin, rxPin);
+    ESP_LOGI(TAG, "Initialized at %lu bps (TX=%d, RX=%d)", speed, txPin, rxPin);
     return true;
 }
 
@@ -58,7 +61,7 @@ bool CanBus::transmit(uint32_t id, const uint8_t* data, uint8_t len) {
 
 bool CanBus::safeTransmit(uint32_t id, const uint8_t* data, uint8_t len) {
     if (id < CAN_CUSTOM_ID_MIN || id > CAN_CUSTOM_ID_MAX) {
-        Serial.printf("[CAN] BLOCKED transmit of non-custom ID 0x%03X\n", id);
+        ESP_LOGW(TAG, "BLOCKED transmit of non-custom ID 0x%03X", id);
         return false;
     }
     return transmit(id, data, len);
@@ -88,12 +91,12 @@ void CanBus::checkErrors() {
         unsigned long now = millis();
         if (now - lastRecoveryAttemptMs_ > RECOVERY_BACKOFF_MS) {
             lastRecoveryAttemptMs_ = now;
-            Serial.println("[CAN] Bus-off detected, attempting recovery...");
+            ESP_LOGW(TAG, "Bus-off detected, attempting recovery...");
             twai_initiate_recovery();
         }
     } else if (status.state == TWAI_STATE_RUNNING && busOff_) {
         busOff_ = false;
-        Serial.println("[CAN] Recovered from bus-off.");
+        ESP_LOGI(TAG, "Recovered from bus-off.");
     }
 
     txErrorCount_ += status.tx_error_counter;

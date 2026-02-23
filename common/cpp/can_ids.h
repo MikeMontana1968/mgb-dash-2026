@@ -61,6 +61,14 @@ constexpr uint8_t GEAR_UNKNOWN = 0xFF;
 constexpr uint32_t CAN_ID_SELF_TEST      = 0x730;  // On-demand self-test trigger
 constexpr uint8_t  SELF_TEST_TARGET_ALL  = 0xFF;   // byte 0 = 0xFF → all modules
 
+// ── Logging ───────────────────────────────────────────────────────
+constexpr uint32_t CAN_ID_LOG            = 0x731;  // Structured log event
+constexpr uint32_t CAN_ID_LOG_TEXT       = 0x732;  // Log text continuation (up to 7 frames)
+constexpr uint8_t  LOG_DLC              = 8;       // LOG frame is always 8 bytes
+constexpr uint8_t  LOG_TEXT_DLC         = 8;       // LOG_TEXT frame is always 8 bytes
+constexpr uint8_t  LOG_TEXT_MAX_FRAMES  = 7;       // Max text continuation frames
+constexpr uint8_t  LOG_TEXT_CHARS_PER_FRAME = 7;   // 7 ASCII chars per text frame
+
 // ── GPS Module ──────────────────────────────────────────────────────
 constexpr uint32_t CAN_ID_GPS_SPEED         = 0x720;  // Speed (64-bit double, mph)
 constexpr uint32_t CAN_ID_GPS_TIME          = 0x721;  // Seconds since midnight UTC
@@ -92,3 +100,4 @@ constexpr uint32_t CAN_ID_LEAF_AZE0_ID        = 0x59E;
 
 // ── CAN bus configuration ───────────────────────────────────────────
 constexpr uint32_t CAN_BUS_SPEED = 500000;  // 500 kbps
+constexpr uint32_t CAN_SILENCE_TIMEOUT_MS = 5000;  // default 5 seconds

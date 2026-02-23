@@ -17,6 +17,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from common.python import can_ids
 from common.python import leaf_messages
 from common.python import resolve_messages
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-monitor")
 
 # TODO: Import python-can
 # TODO: Set up SocketCAN interface (default: can0)
@@ -34,8 +37,9 @@ def main():
     parser.add_argument("--filter", default="", help="Comma-separated module filter (BODY,GPS,LEAF,HEARTBEAT)")
     args = parser.parse_args()
 
-    print(f"[CAN-MONITOR] Listening on {args.interface}...")
-    print("[CAN-MONITOR] Not yet implemented — scaffold only.")
+    logger.critical("CAN monitor starting...")
+    logger.info("Listening on %s...", args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

@@ -14,6 +14,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-stress")
 
 # TODO: Import python-can
 # TODO: Send CAN frames at specified rate (frames/sec)
@@ -28,8 +31,9 @@ def main():
     parser.add_argument("--duration", type=int, default=10, help="Duration in seconds (default: 10)")
     args = parser.parse_args()
 
-    print(f"[CAN-STRESS] {args.rate} fps for {args.duration}s on {args.interface}...")
-    print("[CAN-STRESS] Not yet implemented — scaffold only.")
+    logger.critical("CAN stress test starting...")
+    logger.info("%d fps for %ds on %s...", args.rate, args.duration, args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

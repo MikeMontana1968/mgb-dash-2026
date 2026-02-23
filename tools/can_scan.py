@@ -15,6 +15,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-scan")
 
 # TODO: Import python-can
 # TODO: Listen for 0x59E to confirm AZE0 (2013–2017) Leaf
@@ -29,8 +32,9 @@ def main():
     parser.add_argument("--timeout", type=int, default=5, help="Scan duration in seconds (default: 5)")
     args = parser.parse_args()
 
-    print(f"[CAN-SCAN] Scanning {args.interface} for {args.timeout}s...")
-    print("[CAN-SCAN] Not yet implemented — scaffold only.")
+    logger.critical("CAN scan starting...")
+    logger.info("Scanning %s for %ds...", args.interface, args.timeout)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,9 @@ public:
      */
     void setValue(float value);
 
+    /** Blocking self-test: sweep 0→180→0 (~1.8s). Call from setup(). */
+    void runSelfTestSweep();
+
     /**
      * Enable smoothing (exponential moving average).
      * @param factor  0.0 = no movement, 1.0 = instant (default 0.15)

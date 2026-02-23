@@ -16,6 +16,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-emulate")
 
 # TODO: Import python-can
 # TODO: Emulate Leaf CAN messages (0x1DA, 0x1DB, etc.) with configurable values
@@ -32,8 +35,9 @@ def main():
                         help="Module to emulate")
     args = parser.parse_args()
 
-    print(f"[CAN-EMULATE] Emulating {args.module} on {args.interface}...")
-    print("[CAN-EMULATE] Not yet implemented — scaffold only.")
+    logger.critical("CAN emulator starting...")
+    logger.info("Emulating %s on %s...", args.module, args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

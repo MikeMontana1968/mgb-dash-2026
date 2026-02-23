@@ -15,6 +15,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-inject")
 
 # TODO: Import python-can
 # TODO: Parse hex data string into bytes
@@ -29,8 +32,9 @@ def main():
     parser.add_argument("--data", required=True, help="Payload bytes in hex (e.g., '01 00 00 00 00 00 00 00')")
     args = parser.parse_args()
 
-    print(f"[CAN-INJECT] Sending 0x{int(args.id, 16):03X} on {args.interface}...")
-    print("[CAN-INJECT] Not yet implemented — scaffold only.")
+    logger.critical("CAN inject starting...")
+    logger.info("Sending 0x%03X on %s...", int(args.id, 16), args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

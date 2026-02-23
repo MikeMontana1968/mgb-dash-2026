@@ -27,10 +27,11 @@ apt-get install -y \
     libxkbcommon-dev \
     libfontconfig1-dev \
     libdbus-1-dev
-pip3 install PySide6 --break-system-packages
+# Install Python dependencies via uv
+cd /home/pi/mgb-dash-2026/primary-display
+uv sync
 
-# Install python-can for CAN bus
-echo "[3/5] python-can already installed via base.sh"
+echo "[3/5] Python dependencies installed via uv sync"
 
 # Configure Innomaker USB2CAN
 echo "[4/5] Configuring USB2CAN (gs_usb)..."

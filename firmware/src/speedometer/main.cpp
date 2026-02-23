@@ -6,18 +6,30 @@
  */
 
 #include <Arduino.h>
+#include "esp_log.h"
 #include "CanBus.h"
 #include "Heartbeat.h"
+#include "CanLog.h"
 #include "LedRing.h"
 #include "can_ids.h"
 
+static const char* TAG = GAUGE_ROLE_NAME;
+
 CanBus canBus;
 Heartbeat heartbeat;
+CanLog canLog;
 LedRing ledRing;
+
+// ── CAN silence watchdog ────────────────────────────────────────────
+bool canMessageReceived = false;
+bool canSilenceMode = false;
 
 void setup() {
     Serial.begin(115200);
-    Serial.println("[SPEED] Speedometer starting...");
+    ESP_LOGI(TAG, "Speedometer starting...");
+
+    canLog.init(&canBus, LOG_ROLE);
+    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
 
     canBus.init(CAN_TX_PIN, CAN_RX_PIN, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
@@ -27,7 +39,13 @@ void setup() {
     // TODO: Init servo for gear indicator disc
     // TODO: Init eInk display (SPI, tri-color 1.54" 200x200)
 
-    Serial.println("[SPEED] Init complete.");
+    // ── Self-test (LED ring only; stepper/eInk are future TODOs) ────
+    canLog.log(LogLevel::LOG_INFO, LogEvent::SELF_TEST_START);
+    ledRing.runSelfTestChase();
+    canLog.log(LogLevel::LOG_INFO, LogEvent::SELF_TEST_PASS);
+
+    canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
+    ESP_LOGI(TAG, "Init complete.");
 }
 
 void loop() {
@@ -37,6 +55,7 @@ void loop() {
     uint8_t data[8];
     uint8_t len;
     if (canBus.receive(id, data, len)) {
+        canMessageReceived = true;
         // TODO: Handle BODY_SPEED (0x711) → stepper motor position
         // TODO: Handle GPS_SPEED (0x720) → speed discrepancy check
         // TODO: Handle BODY_GEAR (0x712) → servo gear indicator
@@ -45,5 +64,21 @@ void loop() {
         // TODO: Handle BODY_STATE (0x710) → turn signal animation
     }
 
-    delay(10);  // TODO: Replace with proper timing
+    // ── CAN silence watchdog ────────────────────────────────────────
+    if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {
+        if (!canSilenceMode) {
+            canSilenceMode = true;
+            ledRing.startBluePulse();
+            canLog.log(LogLevel::LOG_WARN, LogEvent::CAN_SILENCE);
+            ESP_LOGW(TAG, "CAN silence — entering fault mode");
+        }
+    }
+    if (canMessageReceived && canSilenceMode) {
+        canSilenceMode = false;
+        ledRing.stopBluePulse();
+        canLog.log(LogLevel::LOG_INFO, LogEvent::BUS_RECOVERED);
+        ESP_LOGI(TAG, "CAN traffic resumed");
+    }
+
+    ledRing.update();
 }

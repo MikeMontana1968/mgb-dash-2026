@@ -15,6 +15,9 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("can-cell-query")
 
 # TODO: Import python-can
 # TODO: Send UDS request to 0x79B (BMS diagnostic request)
@@ -31,8 +34,9 @@ def main():
     parser.add_argument("--interval", type=int, default=0, help="Poll interval in seconds (0 = once)")
     args = parser.parse_args()
 
-    print(f"[CAN-CELL] Querying cells on {args.interface}...")
-    print("[CAN-CELL] Not yet implemented — scaffold only.")
+    logger.critical("CAN cell query starting...")
+    logger.info("Querying cells on %s...", args.interface)
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

@@ -129,6 +129,29 @@
         "byte_0": "Target module: 0xFF=ALL, or ASCII first char of role name (F=FUEL, A=AMPS, T=TEMP, S=SPEED, B=BODY, D=DASH, G=GPS)",
         "bytes_1_7": "Reserved (0x00)"
       }
+    },
+    "0x731": {
+      "name": "LOG",
+      "source": "any",
+      "rate_hz": "on-demand",
+      "description": "Structured log event — compact event code with context value and optional text continuation via LOG_TEXT frames",
+      "payload": {
+        "byte_0": "role(4 high bits) | level(4 low bits)",
+        "byte_1": "event code (LogEvent enum, uint8)",
+        "bytes_2_5": "context value (uint32, big-endian)",
+        "byte_6": "reserved (0x00)",
+        "byte_7": "text_frames_following (0–7)"
+      }
+    },
+    "0x732": {
+      "name": "LOG_TEXT",
+      "source": "any",
+      "rate_hz": "on-demand",
+      "description": "Optional string continuation for LOG (0x731). Up to 7 frames = 49 ASCII characters.",
+      "payload": {
+        "byte_0": "fragment index (0–6)",
+        "bytes_1_7": "7 ASCII chars, null-padded"
+      }
     }
   },
 

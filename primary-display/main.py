@@ -15,6 +15,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
 from common.python import leaf_messages
+from common.python.log_setup import setup_logging
+
+logger = setup_logging("dash")
 
 # TODO: Import PySide6 / Qt Quick
 # TODO: Import python-can
@@ -27,9 +30,9 @@ from common.python import leaf_messages
 
 
 def main():
-    print(f"[DASH] Primary display starting...")
-    print(f"[DASH] CAN bus speed: {can_ids.CAN_BUS_SPEED} bps")
-    print(f"[DASH] Heartbeat ID: 0x{can_ids.CAN_ID_HEARTBEAT:03X}")
+    logger.critical("Primary display starting...")
+    logger.info("CAN bus speed: %d bps", can_ids.CAN_BUS_SPEED)
+    logger.info("Heartbeat ID: 0x%03X", can_ids.CAN_ID_HEARTBEAT)
 
     # TODO: Initialize Qt application
     # TODO: Load QML UI
@@ -37,7 +40,7 @@ def main():
     # TODO: Start heartbeat monitor
     # TODO: Enter Qt event loop
 
-    print("[DASH] Not yet implemented — scaffold only.")
+    logger.info("Not yet implemented — scaffold only.")
 
 
 if __name__ == "__main__":

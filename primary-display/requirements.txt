@@ -1,3 +1,0 @@
-# MGB Dash 2026 — Primary Display Dependencies
-PySide6>=6.5
-python-can>=4.0
