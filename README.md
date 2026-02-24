@@ -352,8 +352,10 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | `0x724` | GPS_LONGITUDE | GPS Display | 2 Hz | `[lon(8B)]` — 64-bit double, decimal degrees |
 | `0x725` | GPS_ELEVATION | GPS Display | 2 Hz | `[elev(8B)]` — 64-bit double, meters ASL |
 | `0x726` | GPS_AMBIENT_LIGHT | GPS Display | 2 Hz | `[cat(1B)] [rsvd(7B)]` — 0–3 |
-| `0x730` | SELF_TEST | Any (diagnostic) | On-demand | `[target(1B)] [rsvd(7B)]` — 0xFF=ALL or role initial |
-| `0x731`–`0x73F` | *Reserved* | — | — | Future use |
+| `0x730` | SELF_TEST | Any (diagnostic) | On-demand | `[target(1B)] [rsvd(7B)]` — 0xFF=ALL or LogRole enum value |
+| `0x731` | LOG | All modules | On-event | `[role:level(1B)] [event(1B)] [context(4B BE)] [rsvd(1B)] [textFrames(1B)]` |
+| `0x732` | LOG_TEXT | All modules | On-event | `[fragIndex(1B)] [ascii(7B)]` — up to 7 continuation frames |
+| `0x733`–`0x73F` | *Reserved* | — | — | Future use |
 
 #### BODY_STATE Bit Flags (byte 0 of `0x710`)
 
@@ -388,6 +390,37 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | 1 | EARLY_TWILIGHT | Sun recently set |
 | 2 | LATE_TWILIGHT | Deep twilight |
 | 3 | DARKNESS | Full darkness |
+
+#### LOG Frame Format (`0x731`)
+
+Structured log event emitted by any module on boot, error, self-test, etc. Falls back to Serial when CAN is unavailable.
+
+| Byte | Field | Description |
+|------|-------|-------------|
+| 0 | role:level | High nibble = LogRole (0–6), low nibble = LogLevel (0–4) |
+| 1 | event | LogEvent code (see `common/cpp/log_events.h`) |
+| 2–5 | context | 32-bit unsigned context value, big-endian (e.g. `millis()`, error code) |
+| 6 | reserved | 0x00 |
+| 7 | textFrames | Number of LOG_TEXT continuation frames to follow (0–7) |
+
+#### LOG_TEXT Frame Format (`0x732`)
+
+Optional text continuation. Up to 7 frames (49 ASCII chars) following a LOG frame.
+
+| Byte | Field | Description |
+|------|-------|-------------|
+| 0 | fragIndex | Fragment index (0–6) |
+| 1–7 | ascii | 7 bytes of null-padded ASCII text |
+
+#### Log Levels
+
+| Value | Name | Usage |
+|-------|------|-------|
+| 0 | DEBUG | Verbose diagnostic info |
+| 1 | INFO | Normal events (boot, self-test pass) |
+| 2 | WARN | CAN silence, sensor timeout |
+| 3 | ERROR | TX failure, init failure |
+| 4 | CRITICAL | Boot start, watchdog reset |
 
 ---
 
