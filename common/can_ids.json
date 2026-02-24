@@ -27,10 +27,10 @@
       "payload": {
         "byte_0": {
           "bit_0": "KEY_ON",
-          "bit_1": "BRAKE_PRESSED",
-          "bit_2": "REGEN_ACTIVE",
-          "bit_3": "FAN_ACTIVE",
-          "bit_4": "REVERSE_GEAR",
+          "bit_1": "BRAKE",
+          "bit_2": "REGEN",
+          "bit_3": "FAN",
+          "bit_4": "REVERSE",
           "bit_5": "LEFT_TURN",
           "bit_6": "RIGHT_TURN",
           "bit_7": "HAZARD"
@@ -160,83 +160,83 @@
       "name": "LEAF_MOTOR_STATUS",
       "description": "Motor RPM, torque, fail-safe status",
       "signals": {
-        "MotorRPM": { "start_byte": 1, "start_bit": 0, "length_bits": 16, "signed": true, "factor": 1, "offset": 0, "unit": "RPM", "notes": "bytes 1-2, big-endian signed" },
-        "AvailableTorque": { "start_byte": 3, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": -400, "unit": "Nm" },
-        "FailSafe": { "start_byte": 6, "start_bit": 2, "length_bits": 2, "signed": false }
+        "MotorRPM": { "py_key": "motor_rpm", "start_byte": 1, "start_bit": 0, "length_bits": 16, "signed": true, "factor": 1, "offset": 0, "unit": "RPM", "notes": "bytes 1-2, big-endian signed" },
+        "AvailableTorque": { "py_key": "available_torque_nm", "start_byte": 3, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": -400, "unit": "Nm" },
+        "FailSafe": { "py_key": "failsafe", "start_byte": 6, "start_bit": 2, "length_bits": 2, "signed": false }
       }
     },
     "0x1DB": {
       "name": "LEAF_BATTERY_STATUS",
       "description": "Battery voltage, current, SOC",
       "signals": {
-        "BatteryVoltage": { "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": 0, "unit": "V", "notes": "bytes 0-1 upper 10 bits, big-endian" },
-        "BatteryCurrent": { "start_byte": 2, "start_bit": 0, "length_bits": 11, "signed": true, "factor": 0.5, "offset": 0, "unit": "A", "notes": "bytes 2-3 upper 11 bits, big-endian, positive = discharge" },
-        "SOC": { "start_byte": 4, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "Usable SOC" }
+        "BatteryVoltage": { "py_key": "battery_voltage_v", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": 0, "unit": "V", "notes": "bytes 0-1 upper 10 bits, big-endian" },
+        "BatteryCurrent": { "py_key": "battery_current_a", "start_byte": 2, "start_bit": 0, "length_bits": 11, "signed": true, "factor": 0.5, "offset": 0, "unit": "A", "notes": "bytes 2-3 upper 11 bits, big-endian, positive = discharge" },
+        "SOC": { "py_key": "soc_percent", "start_byte": 4, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "Usable SOC" }
       }
     },
     "0x55A": {
       "name": "LEAF_INVERTER_TEMPS",
       "description": "Motor and inverter temperatures",
       "signals": {
-        "MotorTemperature": { "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "°C" },
-        "IGBTTemperature": { "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "°C" },
-        "InverterComBoardTemp": { "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "°C" }
+        "MotorTemperature": { "py_key": "motor_temp_c", "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" },
+        "IGBTTemperature": { "py_key": "igbt_temp_c", "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" },
+        "InverterComBoardTemp": { "py_key": "inverter_temp_c", "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" }
       }
     },
     "0x55B": {
       "name": "LEAF_SOC_PRECISE",
       "description": "High-precision SOC",
       "signals": {
-        "SOC_Precise": { "start_byte": 0, "start_bit": 0, "length_bits": 16, "signed": false, "factor": 0.01, "offset": 0, "unit": "%", "notes": "bytes 0-1, big-endian, divide by 100 for %" }
+        "SOC_Precise": { "py_key": "soc_precise_percent", "start_byte": 0, "start_bit": 0, "length_bits": 16, "signed": false, "factor": 0.01, "offset": 0, "unit": "%", "notes": "bytes 0-1, big-endian, divide by 100 for %" }
       }
     },
     "0x5BC": {
       "name": "LEAF_BATTERY_HEALTH",
       "description": "Battery capacity, SOH, GIDs",
       "signals": {
-        "GIDs": { "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 1, "offset": 0, "unit": "GIDs", "notes": "bytes 0-1 upper 10 bits" },
-        "SOH": { "start_byte": 4, "start_bit": 1, "length_bits": 7, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "byte 4 bits 1-7" }
+        "GIDs": { "py_key": "gids", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 1, "offset": 0, "unit": "GIDs", "notes": "bytes 0-1 upper 10 bits" },
+        "SOH": { "py_key": "soh_percent", "start_byte": 4, "start_bit": 1, "length_bits": 7, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "byte 4 bits 1-7" }
       }
     },
     "0x5C0": {
       "name": "LEAF_BATTERY_TEMP",
       "description": "Battery pack temperature",
       "signals": {
-        "BatteryTemp": { "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": true, "factor": 1, "offset": -40, "unit": "°C", "notes": "byte 0, offset -40 (raw + offset = °C)" }
+        "BatteryTemp": { "py_key": "battery_temp_c", "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": true, "factor": 1, "offset": -40, "unit": "\u00b0C", "notes": "byte 0, offset -40 (raw + offset = \u00b0C)" }
       }
     },
     "0x1DC": {
-      "name": "LEAF_CHARGER_STATUS",
+      "name": "LEAF_CHARGER",
       "description": "Charger/OBC status and power",
       "signals": {
-        "ChargePower": { "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.25, "offset": 0, "unit": "kW", "notes": "bytes 0-1 upper 10 bits" }
+        "ChargePower": { "py_key": "charge_power_kw", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.25, "offset": 0, "unit": "kW", "notes": "bytes 0-1 upper 10 bits" }
       }
     },
     "0x390": {
-      "name": "LEAF_VCM_STATUS",
+      "name": "LEAF_VCM",
       "description": "VCM operational status",
       "signals": {
-        "VCMMainRelay": { "start_byte": 4, "start_bit": 0, "length_bits": 1, "signed": false, "notes": "1 = main relay closed" }
+        "VCMMainRelay": { "py_key": "main_relay_closed", "start_byte": 4, "start_bit": 0, "length_bits": 1, "signed": false, "notes": "1 = main relay closed" }
       }
     },
     "0x59E": {
-      "name": "LEAF_AZE0_IDENTIFIER",
-      "description": "Present only on AZE0 (2013–2017) Leaf — used for generation detection",
+      "name": "LEAF_AZE0_ID",
+      "description": "Present only on AZE0 (2013\u20132017) Leaf \u2014 used for generation detection",
       "signals": {}
     }
   },
 
   "resolve_ids": {
     "0x539": {
-      "name": "RESOLVE_DISPLAY_MSG",
+      "name": "RESOLVE_DISPLAY",
       "description": "Resolve EV Controller display message",
       "signals": {
-        "Gear": { "start_byte": 0, "start_bit": 0, "length_bits": 4, "signed": false },
-        "IgnitionOn": { "start_byte": 0, "start_bit": 4, "length_bits": 1, "signed": false },
-        "SystemOn": { "start_byte": 0, "start_bit": 5, "length_bits": 1, "signed": false },
-        "DisplayMaxChargeOn": { "start_byte": 0, "start_bit": 6, "length_bits": 1, "signed": false },
-        "RegenStrength": { "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false },
-        "SOCforDisplay": { "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "unit": "%" }
+        "Gear": { "py_key": "gear", "start_byte": 0, "start_bit": 0, "length_bits": 4, "signed": false },
+        "IgnitionOn": { "py_key": "ignition_on", "start_byte": 0, "start_bit": 4, "length_bits": 1, "signed": false },
+        "SystemOn": { "py_key": "system_on", "start_byte": 0, "start_bit": 5, "length_bits": 1, "signed": false },
+        "DisplayMaxChargeOn": { "py_key": "display_max_charge_on", "start_byte": 0, "start_bit": 6, "length_bits": 1, "signed": false },
+        "RegenStrength": { "py_key": "regen_strength", "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false },
+        "SOCforDisplay": { "py_key": "soc_percent", "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "unit": "%" }
       }
     }
   },

@@ -144,6 +144,20 @@ class Presenter:
             self.centerText(message, self.fontMed, color)
         self.disp.ShowImage(self.CompostingImage)
 
+    def write_waiting(self, elapsed_secs):
+        """Startup screen: 'Waiting for GPS' with elapsed seconds counter."""
+        self.newCanvas()
+        self.centerText("Waiting for GPS", self.fontMed, "RED", offsetY=-25)
+        self.centerText(str(elapsed_secs), self.fontLarge, "RED", offsetY=25)
+        self.disp.ShowImage(self.CompostingImage)
+
+    def write_signal_lost(self, local_time_str):
+        """Signal-lost fallback: system clock time + 'signal lost' label."""
+        self.newCanvas()
+        self.centerText(local_time_str, self.fontLarge, "WHITE", offsetY=-20)
+        self.centerText("signal lost", self.fontMed, "RED", offsetY=30)
+        self.disp.ShowImage(self.CompostingImage)
+
     def newCanvas(self):
         self.CompostingImage = Image.new("RGB", (self.disp.width, self.disp.height), "BLACK")
         self.canvas = ImageDraw.Draw(self.CompostingImage)

@@ -1,46 +1,95 @@
 """
 MGB Dash 2026 — Primary Display (Pi 4B)
 
-Qt/QML + PySide6 dashboard on Waveshare 3.4" Round DSI LCD (800x800).
-Reads CAN bus, monitors heartbeats, drives context-driven display.
+pycairo + pygame dashboard on Waveshare 3.4" Round DSI LCD (800x800).
+Reads CAN bus (or synthetic/replay data), drives context-based display.
 
-Contexts: Startup, Driving, Charging, Idle, Diagnostics
+Usage:
+    python main.py                                        # synthetic, all_signals
+    python main.py --source synthetic --scenario driving   # driving scenario
+    python main.py --source replay --file session.asc      # replay (Phase 3)
+    python main.py --source can                            # real CAN (Phase 4)
+    python main.py --context diagnostics                   # force initial context
 """
 
 import sys
 import os
+import argparse
 
-# Add common/ to path for shared CAN definitions
+# Add repo root so common.python imports work
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from common.python import can_ids
-from common.python import leaf_messages
 from common.python.log_setup import setup_logging
 
 logger = setup_logging("dash")
 
-# TODO: Import PySide6 / Qt Quick
-# TODO: Import python-can
-# TODO: Set up CAN bus listener (Innomaker USB2CAN, gs_usb/SocketCAN)
-# TODO: Heartbeat monitor — track all module heartbeats, alert on timeout
-# TODO: Context state machine (Startup → Idle ↔ Driving ↔ Charging ↔ Diagnostics)
-# TODO: QML engine setup with eglfs direct rendering
-# TODO: CAN data → QML property bridge
-# TODO: UDS polling for cell voltages (0x79B/0x7BB) in detailed charging view
-
 
 def main():
+    parser = argparse.ArgumentParser(description="MGB Dash 2026 — Primary Display")
+    parser.add_argument(
+        "--source", choices=["synthetic", "replay", "can"],
+        default="synthetic", help="Data source type"
+    )
+    parser.add_argument(
+        "--scenario", default="all_signals",
+        help="Synthetic scenario: all_signals, idle, driving, charging"
+    )
+    parser.add_argument(
+        "--speed", type=float, default=1.0,
+        help="Replay/synthetic speed multiplier"
+    )
+    parser.add_argument("--file", help="Replay log file path")
+    parser.add_argument(
+        "--context", default="diagnostics",
+        help="Initial display context"
+    )
+    parser.add_argument("--width", type=int, default=800)
+    parser.add_argument("--height", type=int, default=800)
+    args = parser.parse_args()
+
     logger.critical("Primary display starting...")
-    logger.info("CAN bus speed: %d bps", can_ids.CAN_BUS_SPEED)
-    logger.info("Heartbeat ID: 0x%03X", can_ids.CAN_ID_HEARTBEAT)
+    logger.info("Source: %s  Scenario: %s  Speed: %.1fx",
+                args.source, args.scenario, args.speed)
 
-    # TODO: Initialize Qt application
-    # TODO: Load QML UI
-    # TODO: Start CAN listener thread
-    # TODO: Start heartbeat monitor
-    # TODO: Enter Qt event loop
+    # ── Data model ───────────────────────────────────────────────────
+    from vehicle_state import VehicleState
+    state = VehicleState()
 
-    logger.info("Not yet implemented — scaffold only.")
+    # ── Data source ──────────────────────────────────────────────────
+    if args.source == "synthetic":
+        from data_sources.synthetic_source import SyntheticSource
+        source = SyntheticSource(
+            state, scenario=args.scenario, speed_factor=args.speed
+        )
+    elif args.source == "replay":
+        raise NotImplementedError("Replay source not yet implemented (Phase 3)")
+    elif args.source == "can":
+        raise NotImplementedError("CAN bus source not yet implemented (Phase 4)")
+
+    # ── Contexts ─────────────────────────────────────────────────────
+    from contexts.diagnostics import DiagnosticsContext
+    from contexts.context_manager import ContextManager
+
+    diag = DiagnosticsContext()
+    diag.set_source_label(args.source)
+    contexts = {"diagnostics": diag}
+    cm = ContextManager(contexts, initial=args.context)
+
+    # ── Display engine ───────────────────────────────────────────────
+    from display_engine import DisplayEngine
+    engine = DisplayEngine(cm, state, width=args.width, height=args.height)
+
+    # ── Run ──────────────────────────────────────────────────────────
+    source.start()
+    logger.info("Data source started (%s)", args.source)
+
+    try:
+        engine.run()   # blocks until ESC / window close
+    except KeyboardInterrupt:
+        logger.info("Interrupted by user")
+    finally:
+        source.stop()
+        logger.info("Primary display stopped")
 
 
 if __name__ == "__main__":

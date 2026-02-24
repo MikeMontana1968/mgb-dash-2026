@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "MGB Dash 2026 — Primary Display (Pi 4B + Waveshare 3.4\" Round DSI LCD)"
 requires-python = ">=3.9"
 dependencies = [
-    "PySide6>=6.5",
+    "pycairo>=1.24",
+    "pygame>=2.5",
     "python-can>=4.0",
+    "numpy>=1.24",
 ]
 
 [project.scripts]

@@ -24,6 +24,7 @@ from datetime import datetime, date
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from common.python import can_ids
+from common.python.can_log import can_log, LogRole, LogLevel, LogEvent
 from common.python.log_setup import setup_logging
 
 logger = setup_logging("gps")
@@ -52,20 +53,50 @@ class SignalHandler:
 
 
 # ── GPSD Connection ───────────────────────────────────────────────────
-def WaitForGPSD(presenter):
-    """Retry gpsd connection, showing status on LCD while waiting."""
-    connected = False
-    while not connected:
+def WaitForGPSD(presenter, sig):
+    """Two-phase startup: connect to gpsd, then wait for satellite fix.
+
+    Phase 1: Connect to gpsd daemon (retry every 5s, display updates every 1s)
+    Phase 2: Poll for fix.mode >= 2 (satellite fix, poll every 1s)
+    Returns True when fix acquired, False if shutdown requested.
+    """
+    start = time.monotonic()
+
+    while sig.continue_looping():
+        # Phase 1 — connect to gpsd daemon
+        elapsed = int(time.monotonic() - start)
+        presenter.write_waiting(elapsed)
+        logger.info("gpsd.connecting...")
         try:
-            uptime = int(time.monotonic()) % 99
-            presenter.write(f"GPS {uptime}", "YELLOW")
-            logger.info("gpsd.connecting...")
             gpsd.connect()
-            connected = True
         except Exception as e:
             logger.error(f"gpsd connection failed: {e}")
-            connected = False
-            time.sleep(5)
+            # Wait 5s but update display every 1s and check for shutdown
+            for _ in range(5):
+                if not sig.continue_looping():
+                    return False
+                time.sleep(1)
+                elapsed = int(time.monotonic() - start)
+                presenter.write_waiting(elapsed)
+            continue
+
+        # Phase 2 — wait for satellite fix
+        logger.info("gpsd connected, waiting for satellite fix...")
+        while sig.continue_looping():
+            elapsed = int(time.monotonic() - start)
+            presenter.write_waiting(elapsed)
+            try:
+                fix = gpsd.get_current()
+                if fix.mode >= 2:
+                    logger.info(f"Satellite fix acquired (mode={fix.mode}) after {elapsed}s")
+                    return True
+                logger.info(f"No fix yet (mode={fix.mode}), waiting...")
+            except Exception as e:
+                logger.error(f"gpsd lost during fix wait: {e}")
+                break  # back to Phase 1
+            time.sleep(1)
+
+    return False
 
 
 # ── CAN Broadcasting ─────────────────────────────────────────────────
@@ -184,8 +215,9 @@ def main():
     # Initialize display
     presenter = Presenter(logger)
 
-    # Connect to gpsd
-    WaitForGPSD(presenter)
+    # Connect to gpsd and wait for satellite fix
+    if not WaitForGPSD(presenter, sig):
+        return  # shutdown during startup
     logger.info("GPS Connected")
     presenter.write("Ready!", "GREEN")
 
@@ -198,31 +230,56 @@ def main():
         logger.error(f"CAN bus init failed (continuing without CAN): {e}")
 
     heartbeat_counter = 0
+    has_fix = True  # just came out of WaitForGPSD with a valid fix
+
+    can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.GPS_FIX_ACQUIRED)
 
     # Main loop — 1 Hz
     while sig.continue_looping():
         try:
             fix = gpsd.get_current()
-            local_time = fix.get_time(local_time=True)
-            speed_mps = fix.speed()
-            lat = fix.lat
-            lon = fix.lon
-            alt = fix.alt
+            if fix.mode >= 2:
+                if not has_fix:
+                    has_fix = True
+                    logger.info(f"GPS fix restored (mode={fix.mode})")
+                    can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.GPS_FIX_ACQUIRED)
 
-            # Update display
-            presenter.use_data(local_time, speed_mps, lat, lon, alt)
+                # Normal operation — valid satellite fix
+                local_time = fix.get_time(local_time=True)
+                speed_mps = fix.speed()
+                lat = fix.lat
+                lon = fix.lon
+                alt = fix.alt
 
-            # Broadcast CAN messages
-            if can_bus is not None:
-                broadcast_can(can_bus, fix, local_time, lat, lon, alt)
-                send_heartbeat(can_bus, heartbeat_counter)
-                heartbeat_counter += 1
+                # Update display
+                presenter.use_data(local_time, speed_mps, lat, lon, alt)
 
+                # Broadcast CAN messages
+                if can_bus is not None:
+                    broadcast_can(can_bus, fix, local_time, lat, lon, alt)
+                    send_heartbeat(can_bus, heartbeat_counter)
+                    heartbeat_counter += 1
+            else:
+                if has_fix:
+                    has_fix = False
+                    logger.warning(f"GPS signal lost (mode={fix.mode})")
+                    can_log(can_bus, LogRole.GPS, LogLevel.LOG_WARN, LogEvent.GPS_FIX_LOST)
+
+                # No satellite fix — show system clock + signal lost
+                presenter.write_signal_lost(datetime.now().strftime("%-I:%M"))
         except Exception as e:
-            logger.error(f"FATAL {e}")
-            presenter.write(str(e))
-            time.sleep(20)
-            WaitForGPSD(presenter)
+            if has_fix:
+                has_fix = False
+                can_log(can_bus, LogRole.GPS, LogLevel.LOG_WARN, LogEvent.GPS_FIX_LOST)
+
+            # Daemon crash — show system clock + signal lost, try reconnect
+            logger.error(f"gpsd error: {e}")
+            presenter.write_signal_lost(datetime.now().strftime("%-I:%M"))
+            try:
+                gpsd.connect()
+                logger.info("gpsd reconnected")
+            except Exception:
+                pass
 
         time.sleep(1)
 
