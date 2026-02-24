@@ -21,7 +21,7 @@ import struct
 import time
 from datetime import datetime, date
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from common.python import can_ids
 from common.python.can_log import can_log, LogRole, LogLevel, LogEvent

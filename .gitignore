@@ -1,8 +1,8 @@
 # PlatformIO
-firmware/.pio/
-firmware/.vscode/
-firmware/include/README
-firmware/test/README
+esp32/.pio/
+esp32/.vscode/
+esp32/include/README
+esp32/test/README
 
 # Python
 __pycache__/

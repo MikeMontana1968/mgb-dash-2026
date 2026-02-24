@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-tools/codegen.py — Generate Python modules from common/can_ids.json
+python/tools/codegen.py — Generate Python modules from common/can_ids.json
 
 Reads the single source of truth and regenerates:
   common/python/can_ids.py
   common/python/leaf_messages.py
   common/python/resolve_messages.py
 
-Usage:  python tools/codegen.py
+Usage:  python python/tools/codegen.py
 """
 
 import json
@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 JSON_PATH = ROOT / "common" / "can_ids.json"
 PY_DIR = ROOT / "common" / "python"
 
@@ -149,7 +149,7 @@ def gen_can_ids(data):
         'MGB Dash 2026 — Custom CAN Arbitration IDs (Python)',
         '',
         'AUTO-GENERATED from common/can_ids.json — do not edit by hand.',
-        'Regenerate:  python tools/codegen.py',
+        'Regenerate:  python python/tools/codegen.py',
         '"""',
         '',
     ])
@@ -332,7 +332,7 @@ def gen_leaf_messages(data):
         'MGB Dash 2026 — Leaf AZE0 CAN Message Decode Constants (Python)',
         '',
         'AUTO-GENERATED from common/can_ids.json — do not edit by hand.',
-        'Regenerate:  python tools/codegen.py',
+        'Regenerate:  python python/tools/codegen.py',
         '',
         'All byte offsets are 0-indexed. Multi-byte values are big-endian',
         'unless noted otherwise.',
@@ -408,7 +408,7 @@ def gen_resolve_messages(data):
         'MGB Dash 2026 — Resolve EV Controller CAN Message Decode Constants (Python)',
         '',
         'AUTO-GENERATED from common/can_ids.json — do not edit by hand.',
-        'Regenerate:  python tools/codegen.py',
+        'Regenerate:  python python/tools/codegen.py',
         '"""',
         '',
     ])

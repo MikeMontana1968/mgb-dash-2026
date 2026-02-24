@@ -2,7 +2,7 @@
 MGB Dash 2026 — Leaf AZE0 CAN Message Decode Constants (Python)
 
 AUTO-GENERATED from common/can_ids.json — do not edit by hand.
-Regenerate:  python tools/codegen.py
+Regenerate:  python python/tools/codegen.py
 
 All byte offsets are 0-indexed. Multi-byte values are big-endian
 unless noted otherwise.

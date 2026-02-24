@@ -2,7 +2,7 @@
 MGB Dash 2026 — Resolve EV Controller CAN Message Decode Constants (Python)
 
 AUTO-GENERATED from common/can_ids.json — do not edit by hand.
-Regenerate:  python tools/codegen.py
+Regenerate:  python python/tools/codegen.py
 """
 
 RESOLVE_539_ID = 0x539

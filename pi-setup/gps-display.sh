@@ -5,7 +5,7 @@
 # Hardware:
 #   LCD:  Waveshare 1.28" GC9A01, 240x240, RGB565, SPI0 @ 40 MHz
 #         GPIO: DC=25, RST=27, BL=18 (PWM 1kHz), SPI0 (MOSI=10, SCK=11, CS=8)
-#         Driver bundled in gps-display/lib/ (lcdconfig.py + LCD_1inch28.py)
+#         Driver bundled in python/gps-display/lib/ (lcdconfig.py + LCD_1inch28.py)
 #   GPS:  NEO-6M on UART (GPIO14 TXD0, GPIO15 RXD0) at 9600 baud → gpsd daemon
 #   CAN:  Innomaker USB2CAN (gs_usb driver) → SocketCAN can0
 #
@@ -27,7 +27,7 @@ apt-get install -y \
 
 # Install Python dependencies via uv
 echo "[2/5] Installing Python dependencies..."
-cd /home/pi/mgb-dash-2026/gps-display
+cd /home/pi/mgb-dash-2026/python/gps-display
 uv sync
 
 # Enable SPI for GC9A01 display

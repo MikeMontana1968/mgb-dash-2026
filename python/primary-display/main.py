@@ -17,7 +17,7 @@ import os
 import argparse
 
 # Add repo root so common.python imports work
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from common.python.log_setup import setup_logging
 

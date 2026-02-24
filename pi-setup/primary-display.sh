@@ -28,7 +28,7 @@ apt-get install -y \
     libfontconfig1-dev \
     libdbus-1-dev
 # Install Python dependencies via uv
-cd /home/pi/mgb-dash-2026/primary-display
+cd /home/pi/mgb-dash-2026/python/primary-display
 uv sync
 
 echo "[3/5] Python dependencies installed via uv sync"

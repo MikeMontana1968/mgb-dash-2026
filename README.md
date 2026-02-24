@@ -51,7 +51,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ## Modules
 
-### Fuel Gauge (Servo) — `firmware/` env: `servo_fuel`
+### Fuel Gauge (Servo) — `esp32/` env: `servo_fuel`
 
 **Role:** Displays battery state of charge (SOC) on a 180-degree servo needle with a 24-LED WS2812B ring.
 
@@ -84,7 +84,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Amps Gauge (Servo) — `firmware/` env: `servo_amps`
+### Amps Gauge (Servo) — `esp32/` env: `servo_amps`
 
 **Role:** Displays battery pack current (discharge/regen) as a center-zero gauge.
 
@@ -115,7 +115,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Temp Gauge (Servo) — `firmware/` env: `servo_temp`
+### Temp Gauge (Servo) — `esp32/` env: `servo_temp`
 
 **Role:** Displays the highest of three inverter/motor temperatures converted to Fahrenheit.
 
@@ -146,7 +146,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Speedometer — `firmware/` env: `speedometer`
+### Speedometer — `esp32/` env: `speedometer`
 
 **Role:** Stepper-motor slot-machine speed display, servo gear indicator, eInk odometer, LED ring.
 
@@ -182,7 +182,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Body Controller — `firmware/` env: `body_controller`
+### Body Controller — `esp32/` env: `body_controller`
 
 **Role:** Central sensor hub. Reads vehicle GPIO inputs, drives hall sensor speed measurement, estimates gear, persists odometer, and bridges to BLE for the phone app.
 
@@ -227,7 +227,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Primary Display — `primary-display/`
+### Primary Display — `python/primary-display/`
 
 **Role:** Main dashboard screen. Pi 4B + Waveshare 3.4" Round DSI LCD (800x800). Qt/QML with PySide6, GPU-accelerated via eglfs.
 
@@ -271,7 +271,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### GPS Display — `gps-display/`
+### GPS Display — `python/gps-display/`
 
 **Role:** GPS receiver, time source, ambient light calculator, astronomical display. Pi 3B + Waveshare 2" Round LCD + NEO-6M GPS.
 
@@ -308,7 +308,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ---
 
-### Test / Monitor Pi — `tools/`
+### Test / Monitor Pi — `python/tools/`
 
 **Role:** Dedicated bench Pi for CAN bus testing and diagnostics. Runs CLI Python tools.
 
@@ -485,7 +485,7 @@ mgb-dash-2026/
 │       ├── leaf_messages.py
 │       └── resolve_messages.py
 │
-├── firmware/                   All ESP32 PlatformIO code
+├── esp32/                      All ESP32 PlatformIO code
 │   ├── platformio.ini          5 build environments
 │   ├── src/
 │   │   ├── servo_gauge/        Shared main for FUEL/AMPS/TEMP
@@ -498,17 +498,19 @@ mgb-dash-2026/
 │       ├── ServoGauge/         Servo control with EMA smoothing
 │       └── LeafCan/            Leaf + Resolve CAN message decoders
 │
-├── primary-display/            Pi 4B — Qt/QML + PySide6
-├── gps-display/                Pi 3B — Python + NEO-6M GPS
+├── python/                     All Python applications and tools
+│   ├── primary-display/        Pi 4B — pycairo + pygame
+│   ├── gps-display/            Pi 3B — Python + NEO-6M GPS
+│   └── tools/                  CLI diagnostic tools (test/monitor Pi)
+│       ├── can_monitor.py      Decoded CAN traffic viewer
+│       ├── can_emulate.py      Module emulator
+│       ├── can_inject.py       Send single CAN frames
+│       ├── can_replay.py       Record/playback sessions
+│       ├── can_stress.py       Bus load testing
+│       ├── can_cell_query.py   UDS cell voltage/shunt query
+│       └── can_scan.py         Bus discovery / module detection
+│
 ├── phone-app/                  PWA — Web Bluetooth
-├── tools/                      CLI diagnostic tools (test/monitor Pi)
-│   ├── can_monitor.py          Decoded CAN traffic viewer
-│   ├── can_emulate.py          Module emulator
-│   ├── can_inject.py           Send single CAN frames
-│   ├── can_replay.py           Record/playback sessions
-│   ├── can_stress.py           Bus load testing
-│   ├── can_cell_query.py       UDS cell voltage/shunt query
-│   └── can_scan.py             Bus discovery / module detection
 │
 └── pi-setup/                   Pi provisioning scripts
     ├── base.sh                 Common (SocketCAN, python-can, git)
@@ -520,7 +522,7 @@ mgb-dash-2026/
 ## Building Firmware
 
 ```bash
-cd firmware
+cd esp32
 pio run                          # Build all 5 environments
 pio run -e servo_fuel            # Build one environment
 pio run -e servo_fuel -t upload  # Flash via USB

@@ -2,7 +2,7 @@
 MGB Dash 2026 — Custom CAN Arbitration IDs (Python)
 
 AUTO-GENERATED from common/can_ids.json — do not edit by hand.
-Regenerate:  python tools/codegen.py
+Regenerate:  python python/tools/codegen.py
 """
 
 # ── Custom CAN ID range ──────────────────────────────────────────────

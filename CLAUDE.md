@@ -7,7 +7,7 @@
 After editing `common/can_ids.json`, always run the code generator to update derived files:
 
 ```powershell
-python tools/codegen.py
+python python/tools/codegen.py
 ```
 
 This regenerates:
@@ -19,5 +19,5 @@ Do NOT edit these generated files by hand — changes will be overwritten.
 
 ## Build
 
-- ESP32 firmware: `cd firmware && pio run`
+- ESP32 firmware: `cd esp32 && pio run`
 - Python packages use `uv` + `pyproject.toml` (no requirements.txt)

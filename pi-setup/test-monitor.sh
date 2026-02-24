@@ -34,7 +34,7 @@ systemctl enable can0.service
 
 echo "=== Test/Monitor setup complete ==="
 echo ""
-echo "Tools available in /home/pi/mgb-dash-2026/tools/:"
+echo "Tools available in /home/pi/mgb-dash-2026/python/tools/:"
 echo "  python3 can_monitor.py    — Decoded CAN traffic viewer"
 echo "  python3 can_emulate.py    — Module emulator"
 echo "  python3 can_inject.py     — Send single CAN frames"
