@@ -51,14 +51,12 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ## Modules
 
-![Latest Version](docs/images/rev2.JPG)
+<img src="docs/images/rev2.jpg" alt="Latest version" width="600">
 
-![Dash faceplate](docs/images/dash.JPG)
-
-
+<img src="docs/images/dash.JPG" alt="Dash faceplate" width="600">
 
 ### Fuel Gauge (Servo) — `esp32/` env: `servo_fuel`
-![Rev 1](docs/images/fuel.JPG)
+<img src="docs/images/fuel.JPG" alt="Fuel gauge" width="400">
 
 **Role:** Displays battery state of charge (SOC) on a 180-degree servo needle with a 24-LED WS2812B ring.
 
@@ -191,7 +189,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 ---
 
 ### Body Controller — `esp32/` env: `body_controller`
-![Rev 1](docs/images/body-controller.JPG)
+<img src="docs/images/body-controller.JPG" alt="Body controller" width="400">
 
 
 **Role:** Central sensor hub. Reads vehicle GPIO inputs, drives hall sensor speed measurement, estimates gear, persists odometer, and bridges to BLE for the phone app.
