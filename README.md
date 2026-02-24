@@ -51,7 +51,13 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 ## Modules
 
+![Rev 1](docs/images/rev2.JPG)
+![Rev 1](docs/images/dash.JPG)
+
+
+
 ### Fuel Gauge (Servo) — `esp32/` env: `servo_fuel`
+![Rev 1](docs/images/fuel.JPG)
 
 **Role:** Displays battery state of charge (SOC) on a 180-degree servo needle with a 24-LED WS2812B ring.
 
@@ -73,6 +79,8 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Consumes | `0x710` | BODY_STATE | Body → | 10 Hz |
 | Consumes | `0x726` | GPS_AMBIENT_LIGHT | GPS → | 2 Hz |
 | Broadcasts | `0x700` | HEARTBEAT | → All | 1 Hz |
+
+
 
 **Behavior:**
 - Servo: 0–180° sweep maps to 0–100% SOC. Primary source: precise SOC from `0x55B`; falls back to coarse SOC from `0x1DB` if precise is stale (>1 s). Smoothing τ=0.8 s.
@@ -182,6 +190,8 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 ---
 
 ### Body Controller — `esp32/` env: `body_controller`
+![Rev 1](docs/images/body-controller.JPG)
+
 
 **Role:** Central sensor hub. Reads vehicle GPIO inputs, drives hall sensor speed measurement, estimates gear, persists odometer, and bridges to BLE for the phone app.
 
