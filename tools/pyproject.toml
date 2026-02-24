@@ -7,6 +7,22 @@ dependencies = [
     "python-can>=4.0",
 ]
 
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = [
+    "codegen",
+    "can_monitor",
+    "can_emulate",
+    "can_inject",
+    "can_replay",
+    "can_scan",
+    "can_stress",
+    "can_cell_query",
+]
+
 [project.scripts]
 can-monitor = "can_monitor:main"
 can-emulate = "can_emulate:main"

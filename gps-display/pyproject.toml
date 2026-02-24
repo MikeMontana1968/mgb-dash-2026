@@ -9,10 +9,17 @@ dependencies = [
     "astral>=3.0",
     "Pillow>=10.0",
     "numpy>=1.19",
-    "spidev>=3.5",
-    "RPi.GPIO>=0.7.0",
+    "spidev>=3.5; sys_platform == 'linux'",
+    "RPi.GPIO>=0.7.0; sys_platform == 'linux'",
     "tendo>=0.3.0",
 ]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main", "presenter", "ephemeris"]
 
 [project.scripts]
 mgb-gps-display = "main:main"
