@@ -75,12 +75,11 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Broadcasts | `0x700` | HEARTBEAT | → All | 1 Hz |
 
 **Behavior:**
-- Servo: 0–180 degree sweep maps to 0–100% SOC. Driven by raw SOC from `0x1DB` byte 4.
-- LED ring color thresholds: green (>50%), yellow (20–50%), red (<20%), blended with white ambient backlight.
-- At 0% SOC: needle at 0, LED ring does slow red breathing effect.
-- Turn signal / hazard animation overlays from `0x710` bit flags.
+- Servo: 0–180° sweep maps to 0–100% SOC. Primary source: precise SOC from `0x55B`; falls back to coarse SOC from `0x1DB` if precise is stale (>1 s). Smoothing τ=0.8 s.
+- LED ring warnings: red (<10% SOC — critically low), amber (<20% — low), ambient otherwise. Amber if CAN data stale >2 s.
+- Turn signal / hazard animation overlays from `0x710` body flags, with 600 ms holdoff to bridge relay blink gaps. Priority: hazard > left > right.
 - Ambient white backlight level driven by `0x726` (DAYLIGHT=dim, DARKNESS=bright).
-- Also captures GIDs from `0x5BC` for primary display energy graphs.
+- CAN silence watchdog: blue breathing pulse if no CAN traffic within 5 s of boot.
 
 ---
 
@@ -107,11 +106,11 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | Broadcasts | `0x700` | HEARTBEAT | → All | 1 Hz |
 
 **Behavior:**
-- Servo: center-zero layout. 90 degrees = 0A. Left sweep = regen, right sweep = discharge.
-- Range: approximately -100A to +300A. Scale is linear (switchable to non-linear via build-time constant).
+- Servo: 0–180° sweep maps -100 A (regen) to +200 A (discharge). Smoothing τ=0.3 s (snappy — current changes fast).
 - Current sourced from `0x1DB` bytes 2–3 (upper 11 bits, signed, factor 0.5). Positive = discharge, negative = regen.
-- LED ring: green during regen (intensity proportional to regen strength), yellow >100A discharge, orange >200A, bright red >300A. Blended with ambient white.
-- Turn signal / hazard animation overlays from `0x710`.
+- LED ring warnings: red (>150 A absolute — extreme current), amber (>100 A absolute — high current), ambient otherwise. Amber if CAN data stale >2 s.
+- Turn signal / hazard animation overlays from `0x710` body flags, with 600 ms holdoff. Priority: hazard > left > right.
+- Ambient white backlight level driven by `0x726`. CAN silence watchdog: blue breathing pulse.
 
 ---
 
@@ -132,17 +131,17 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 | | CAN ID | Name | Direction | Rate |
 |---|--------|------|-----------|------|
-| Consumes | `0x55A` | LEAF_INVERTER_TEMPS | Leaf → | — |
+| Consumes | `0x5C0` | LEAF_BATTERY_TEMP | Leaf → | — |
 | Consumes | `0x710` | BODY_STATE | Body → | 10 Hz |
 | Consumes | `0x726` | GPS_AMBIENT_LIGHT | GPS → | 2 Hz |
 | Broadcasts | `0x700` | HEARTBEAT | → All | 1 Hz |
 
 **Behavior:**
-- Source: `0x55A` — takes the maximum of MotorTemperature (byte 0), IGBTTemperature (byte 1), and InverterComBoardTemp (byte 2). Each raw value / 2 = Celsius, then converted to Fahrenheit.
-- Servo: full 180-degree sweep for -10 F to 200 F.
-- LED ring: blue below 50 F, green 50–95 F, yellow 95–104 F, red above 104 F. Blended with ambient white.
-- Battery temp from `0x5C0` is NOT shown on this gauge — it triggers alerts on the primary display instead (below 40 F or above 120 F).
-- Turn signal / hazard animation overlays from `0x710`.
+- Source: `0x5C0` battery temperature (byte 0, signed, offset -40 = °C).
+- Servo: 0–180° sweep maps -10 °C to 50 °C. Smoothing τ=1.0 s (slow — temp changes very gradually).
+- LED ring warnings: red (>45 °C or <-5 °C — extreme), amber (>35 °C or <0 °C — concerning), ambient otherwise. Amber if CAN data stale >2 s.
+- Turn signal / hazard animation overlays from `0x710` body flags, with 600 ms holdoff. Priority: hazard > left > right.
+- Ambient white backlight level driven by `0x726`. CAN silence watchdog: blue breathing pulse.
 
 ---
 
@@ -529,3 +528,30 @@ pio run -e servo_fuel -t upload  # Flash via USB
 ```
 
 All three servo gauges share one codebase (`src/servo_gauge/main.cpp`) differentiated by build-time constants (`GAUGE_ROLE=FUEL/AMPS/TEMP`). Speedometer and body controller have separate source directories.
+
+---
+
+## Development Status
+
+### Implemented
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| **Body Controller** | Loop complete | GPIO reading, hazard state machine, hall sensor speed, gear estimation, odometer/NVS, CAN broadcast (0x710–0x713), CAN receive (0x1DA motor RPM, 0x730 self-test) |
+| **Servo Gauges (x3)** | Loop complete | CAN decode per role (FUEL→0x55B/0x1DB, AMPS→0x1DB, TEMP→0x5C0), servo mapping with per-role range/smoothing, LED ring threshold warnings, turn signal/hazard animations with 600 ms holdoff, ambient light from 0x726, stale data detection, CAN silence watchdog |
+| **LeafCan decoder** | Complete | All 9 Leaf + Resolve CAN messages decoded with ESP_LOGD debug logging per method |
+| **Primary Display** | Phase 1+2 complete | pycairo+pygame, diagnostics grid with 41 signals, freshness colors, heartbeat bar, scroll |
+| **GPS Display** | Fully ported | 24hr clock dial, sun/moon arcs, CAN broadcast (0x720–0x726), ambient light |
+| **Shared Libraries** | Complete | CanBus, Heartbeat, CanLog, LedRing, ServoGauge, LeafCan |
+| **Code Generator** | Complete | `python/tools/codegen.py`: JSON → Python modules |
+
+### Not Yet Implemented
+
+- Speedometer loop (stepper + eInk + servo gear indicator)
+- Primary Display Phase 3 (ReplaySource) and Phase 4 (CanBusSource + remaining contexts)
+- Phone app BLE and UI logic
+- Tool scripts (stubs only — no python-can integration)
+- Pi setup scripts (untested on hardware)
+- CI/CD, testing infrastructure, git hooks
+- C++ header code generator (Python codegen done)
+- Hardware integration testing

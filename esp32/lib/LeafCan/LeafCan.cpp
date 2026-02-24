@@ -3,6 +3,9 @@
  */
 
 #include "LeafCan.h"
+#include <esp_log.h>
+
+static const char* TAG = "LeafCan";
 
 MotorStatus LeafCan::decodeMotorStatus(const uint8_t* data) {
     MotorStatus s;
@@ -12,6 +15,7 @@ MotorStatus LeafCan::decodeMotorStatus(const uint8_t* data) {
     s.availableTorqueNm = torqueRaw * Leaf1DA::TORQUE_FACTOR + Leaf1DA::TORQUE_OFFSET;
 
     s.failsafe = (data[Leaf1DA::FAILSAFE_BYTE] >> Leaf1DA::FAILSAFE_SHIFT) & Leaf1DA::FAILSAFE_MASK;
+    ESP_LOGD(TAG, "0x1DA Motor: rpm=%d torque=%.1fNm failsafe=%u", s.rpm, s.availableTorqueNm, s.failsafe);
     return s;
 }
 
@@ -29,6 +33,7 @@ BatteryStatus LeafCan::decodeBatteryStatus(const uint8_t* data) {
     s.currentA = (int16_t)currRaw * Leaf1DB::CURRENT_FACTOR;
 
     s.socPercent = data[Leaf1DB::SOC_BYTE];
+    ESP_LOGD(TAG, "0x1DB Battery: %.1fV %.1fA soc=%u%%", s.voltageV, s.currentA, s.socPercent);
     return s;
 }
 
@@ -37,32 +42,42 @@ InverterTemps LeafCan::decodeInverterTemps(const uint8_t* data) {
     t.motorTempC    = data[Leaf55A::MOTOR_TEMP_BYTE]    * Leaf55A::TEMP_FACTOR;
     t.igbtTempC     = data[Leaf55A::IGBT_TEMP_BYTE]     * Leaf55A::TEMP_FACTOR;
     t.inverterTempC = data[Leaf55A::INVERTER_TEMP_BYTE]  * Leaf55A::TEMP_FACTOR;
+    ESP_LOGD(TAG, "0x55A Temps: motor=%.0fC igbt=%.0fC inverter=%.0fC", t.motorTempC, t.igbtTempC, t.inverterTempC);
     return t;
 }
 
 float LeafCan::decodePreciseSOC(const uint8_t* data) {
     uint16_t raw = (data[Leaf55B::SOC_BYTE_HI] << 8) | data[Leaf55B::SOC_BYTE_LO];
-    return raw * Leaf55B::SOC_FACTOR;
+    float soc = raw * Leaf55B::SOC_FACTOR;
+    ESP_LOGD(TAG, "0x55B PreciseSOC: %.2f%%", soc);
+    return soc;
 }
 
 BatteryHealth LeafCan::decodeBatteryHealth(const uint8_t* data) {
     BatteryHealth h;
     h.gids = ((data[Leaf5BC::GIDS_BYTE_HI] << 8) | data[Leaf5BC::GIDS_BYTE_LO]) >> (16 - Leaf5BC::GIDS_BITS);
     h.sohPercent = (data[Leaf5BC::SOH_BYTE] >> Leaf5BC::SOH_SHIFT) & Leaf5BC::SOH_MASK;
+    ESP_LOGD(TAG, "0x5BC Health: gids=%u soh=%u%%", h.gids, h.sohPercent);
     return h;
 }
 
 int8_t LeafCan::decodeBatteryTemp(const uint8_t* data) {
-    return (int8_t)data[Leaf5C0::TEMP_BYTE] + Leaf5C0::TEMP_OFFSET;
+    int8_t temp = (int8_t)data[Leaf5C0::TEMP_BYTE] + Leaf5C0::TEMP_OFFSET;
+    ESP_LOGD(TAG, "0x5C0 BattTemp: %dC", temp);
+    return temp;
 }
 
 float LeafCan::decodeChargerPower(const uint8_t* data) {
     uint16_t raw = ((data[Leaf1DC::POWER_BYTE_HI] << 8) | data[Leaf1DC::POWER_BYTE_LO]) >> (16 - Leaf1DC::POWER_BITS);
-    return raw * Leaf1DC::POWER_FACTOR;
+    float power = raw * Leaf1DC::POWER_FACTOR;
+    ESP_LOGD(TAG, "0x1DC Charger: %.2fkW", power);
+    return power;
 }
 
 bool LeafCan::decodeMainRelay(const uint8_t* data) {
-    return (data[Leaf390::RELAY_BYTE] >> Leaf390::RELAY_BIT) & 0x01;
+    bool relay = (data[Leaf390::RELAY_BYTE] >> Leaf390::RELAY_BIT) & 0x01;
+    ESP_LOGD(TAG, "0x390 MainRelay: %s", relay ? "CLOSED" : "OPEN");
+    return relay;
 }
 
 ResolveDisplay LeafCan::decodeResolveDisplay(const uint8_t* data) {
@@ -73,5 +88,7 @@ ResolveDisplay LeafCan::decodeResolveDisplay(const uint8_t* data) {
     r.displayMaxCharge = (data[0] >> Resolve539::DISPLAY_MAX_CHARGE_BIT) & 1;
     r.regenStrength  = data[Resolve539::REGEN_BYTE];
     r.socPercent     = data[Resolve539::SOC_BYTE];
+    ESP_LOGD(TAG, "0x539 Resolve: gear=%u ign=%d sys=%d maxChg=%d regen=%u soc=%u%%",
+             r.gear, r.ignitionOn, r.systemOn, r.displayMaxCharge, r.regenStrength, r.socPercent);
     return r;
 }

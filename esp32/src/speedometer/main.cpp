@@ -31,9 +31,9 @@ void setup() {
     canLog.init(&canBus, LOG_ROLE);
     canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
 
-    canBus.init(CAN_TX_PIN, CAN_RX_PIN, CAN_BUS_SPEED);
+    canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
-    ledRing.init(LED_DATA_PIN, LED_COUNT);
+    ledRing.init(PIN_LED_DATA, LED_COUNT);
 
     // TODO: Init stepper motor driver (28BYJ-48 + ULN2003)
     // TODO: Init servo for gear indicator disc

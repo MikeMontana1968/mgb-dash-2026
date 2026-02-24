@@ -6,6 +6,7 @@
  */
 
 #include <Arduino.h>
+#include <cmath>
 #include "esp_log.h"
 #include "CanBus.h"
 #include "Heartbeat.h"
@@ -16,6 +17,7 @@
 #include "can_ids.h"
 
 static const char* TAG = GAUGE_ROLE_NAME;
+static constexpr LogRole ROLE = LOG_ROLE;
 
 CanBus canBus;
 Heartbeat heartbeat;
@@ -27,6 +29,23 @@ LeafCan leafCan;
 // ── CAN silence watchdog ────────────────────────────────────────────
 bool canMessageReceived = false;
 bool canSilenceMode = false;
+
+// ── Gauge value state ──────────────────────────────────────────────
+float gaugeValue = 0.0f;
+unsigned long lastGaugeUpdateMs = 0;
+static constexpr unsigned long GAUGE_STALE_MS = 2000;
+
+// ── Turn signal / hazard holdoff ───────────────────────────────────
+unsigned long lastLeftMs = 0;
+unsigned long lastRightMs = 0;
+unsigned long lastHazardMs = 0;
+static constexpr unsigned long TURN_HOLDOFF_MS = 600;
+
+enum AnimState { ANIM_NONE, ANIM_HAZARD, ANIM_LEFT, ANIM_RIGHT };
+AnimState currentAnim = ANIM_NONE;
+
+// ── Body state flags (from 0x710) ──────────────────────────────────
+uint8_t lastBodyFlags = 0;
 
 // ── Color wheel helper ──────────────────────────────────────────────
 static void wheelToRGB(uint8_t pos, uint8_t &r, uint8_t &g, uint8_t &b) {
@@ -124,6 +143,84 @@ void runSelfTest() {
     ESP_LOGI(TAG, "Self-test complete.");
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// LED warning colors based on gauge value thresholds
+// ═════════════════════════════════════════════════════════════════════
+static void updateWarnings() {
+    // Don't override turn signal / hazard animations
+    if (currentAnim != ANIM_NONE) return;
+
+    // Don't override blue pulse fault mode
+    if (canSilenceMode) return;
+
+    // Stale data warning (amber) — only after first value received
+    if (lastGaugeUpdateMs > 0 && (millis() - lastGaugeUpdateMs) > GAUGE_STALE_MS) {
+        ledRing.setWarning(255, 100, 0);
+        return;
+    }
+
+    if (ROLE == LogRole::FUEL) {
+        if (gaugeValue < 10.0f) {
+            ledRing.setWarning(255, 0, 0);       // red — critically low SOC
+        } else if (gaugeValue < 20.0f) {
+            ledRing.setWarning(255, 180, 0);     // amber — low SOC
+        } else {
+            ledRing.clearWarning();
+        }
+    } else if (ROLE == LogRole::AMPS) {
+        float absAmps = fabsf(gaugeValue);
+        if (absAmps > 150.0f) {
+            ledRing.setWarning(255, 0, 0);       // red — extreme current
+        } else if (absAmps > 100.0f) {
+            ledRing.setWarning(255, 180, 0);     // amber — high current
+        } else {
+            ledRing.clearWarning();
+        }
+    } else if (ROLE == LogRole::TEMP) {
+        if (gaugeValue > 45.0f || gaugeValue < -5.0f) {
+            ledRing.setWarning(255, 0, 0);       // red — extreme temp
+        } else if (gaugeValue > 35.0f || gaugeValue < 0.0f) {
+            ledRing.setWarning(255, 180, 0);     // amber — concerning temp
+        } else {
+            ledRing.clearWarning();
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Turn signal / hazard animation from body controller flags (0x710)
+// Uses holdoff timer to bridge relay blink gaps.
+// ═════════════════════════════════════════════════════════════════════
+static void updateAnimations() {
+    unsigned long now = millis();
+
+    // Update holdoff timestamps from latest body flags
+    if (lastBodyFlags & BODY_FLAG_HAZARD)     lastHazardMs = now;
+    if (lastBodyFlags & BODY_FLAG_LEFT_TURN)  lastLeftMs   = now;
+    if (lastBodyFlags & BODY_FLAG_RIGHT_TURN) lastRightMs  = now;
+
+    // Determine desired animation (hazard > left > right)
+    bool hazardActive = lastHazardMs > 0 && (now - lastHazardMs) < TURN_HOLDOFF_MS;
+    bool leftActive   = lastLeftMs   > 0 && (now - lastLeftMs)   < TURN_HOLDOFF_MS;
+    bool rightActive  = lastRightMs  > 0 && (now - lastRightMs)  < TURN_HOLDOFF_MS;
+
+    AnimState desired = ANIM_NONE;
+    if (hazardActive)      desired = ANIM_HAZARD;
+    else if (leftActive)   desired = ANIM_LEFT;
+    else if (rightActive)  desired = ANIM_RIGHT;
+
+    // Only change animation on state transition
+    if (desired != currentAnim) {
+        switch (desired) {
+            case ANIM_HAZARD: ledRing.startHazard();            break;
+            case ANIM_LEFT:   ledRing.startTurnSignal(true);    break;
+            case ANIM_RIGHT:  ledRing.startTurnSignal(false);   break;
+            case ANIM_NONE:   ledRing.stopAnimation();          break;
+        }
+        currentAnim = desired;
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     ESP_LOGI(TAG, "Servo gauge starting...");
@@ -131,10 +228,22 @@ void setup() {
     canLog.init(&canBus, LOG_ROLE);
     canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
 
-    canBus.init(CAN_TX_PIN, CAN_RX_PIN, CAN_BUS_SPEED);
+    canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
-    ledRing.init(LED_DATA_PIN, LED_COUNT);
-    servo.init(SERVO_PIN);
+    ledRing.init(PIN_LED_DATA, LED_COUNT);
+    servo.init(PIN_SERVO);
+
+    // ── Gauge-specific servo range and damping ────────────────────────
+    if (ROLE == LogRole::FUEL) {
+        servo.setRange(0.0f, 100.0f);      // SOC 0–100%
+        servo.setSmoothing(0.8f);           // slow — SOC changes gradually
+    } else if (ROLE == LogRole::AMPS) {
+        servo.setRange(-100.0f, 200.0f);   // -100A regen to 200A discharge
+        servo.setSmoothing(0.3f);           // snappy — current changes fast
+    } else if (ROLE == LogRole::TEMP) {
+        servo.setRange(-10.0f, 50.0f);     // -10°C to 50°C
+        servo.setSmoothing(1.0f);          // slow — temp changes very gradually
+    }
 
     // ── Self-test at startup ─────────────────────────────────────────
     runSelfTest();
@@ -145,17 +254,13 @@ void setup() {
 
 void loop() {
     heartbeat.update();
+    canBus.checkErrors();
 
-    // TODO: Read CAN messages relevant to this gauge role
-    // TODO: Decode Leaf CAN data via leafCan
-    // TODO: Map decoded value to servo angle
-    // TODO: Update LED ring based on value thresholds and ambient light
-    // TODO: Handle turn signal / hazard animation on LED ring
-
+    // ── CAN receive — drain queue ───────────────────────────────────
     uint32_t id;
     uint8_t data[8];
     uint8_t len;
-    if (canBus.receive(id, data, len)) {
+    while (canBus.receive(id, data, len)) {
         canMessageReceived = true;
 
         // ── On-demand self-test via CAN 0x730 ────────────────────────
@@ -167,8 +272,50 @@ void loop() {
             }
         }
 
-        // TODO: Dispatch to appropriate handler based on GAUGE_ROLE
+        // ── Gauge-specific Leaf CAN decode ───────────────────────────
+        if (ROLE == LogRole::FUEL) {
+            if (id == CAN_ID_LEAF_SOC_PRECISE) {
+                // Primary: precise SOC from 0x55B
+                gaugeValue = LeafCan::decodePreciseSOC(data);
+                lastGaugeUpdateMs = millis();
+            } else if (id == CAN_ID_LEAF_BATTERY_STATUS) {
+                // Fallback: coarse SOC from 0x1DB if precise is stale
+                if (millis() - lastGaugeUpdateMs > 1000) {
+                    BatteryStatus bs = LeafCan::decodeBatteryStatus(data);
+                    gaugeValue = bs.socPercent;
+                    lastGaugeUpdateMs = millis();
+                }
+            }
+        } else if (ROLE == LogRole::AMPS) {
+            if (id == CAN_ID_LEAF_BATTERY_STATUS) {
+                BatteryStatus bs = LeafCan::decodeBatteryStatus(data);
+                gaugeValue = bs.currentA;
+                lastGaugeUpdateMs = millis();
+            }
+        } else if (ROLE == LogRole::TEMP) {
+            if (id == CAN_ID_LEAF_BATTERY_TEMP) {
+                gaugeValue = (float)LeafCan::decodeBatteryTemp(data);
+                lastGaugeUpdateMs = millis();
+            }
+        }
+
+        // ── Common: body state flags (turn signals, hazards) ─────────
+        if (id == CAN_ID_BODY_STATE) {
+            lastBodyFlags = data[0];
+        }
+
+        // ── Common: ambient light level ──────────────────────────────
+        if (id == CAN_ID_GPS_AMBIENT_LIGHT) {
+            ledRing.setAmbientFromCategory(data[0]);
+        }
     }
+
+    // ── Update servo from gauge value ────────────────────────────────
+    servo.setValue(gaugeValue);
+
+    // ── Update LED ring warnings and animations ─────────────────────
+    updateAnimations();
+    updateWarnings();
 
     // ── CAN silence watchdog ────────────────────────────────────────
     if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {
