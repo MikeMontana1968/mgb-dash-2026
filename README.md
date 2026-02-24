@@ -52,6 +52,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 ## Modules
 
 ![Latest Version](docs/images/rev2.JPG)
+
 ![Dash faceplate](docs/images/dash.JPG)
 
 
