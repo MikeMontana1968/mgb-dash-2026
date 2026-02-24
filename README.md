@@ -398,7 +398,7 @@ Structured log event emitted by any module on boot, error, self-test, etc. Falls
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | role:level | High nibble = LogRole (0–6), low nibble = LogLevel (0–4) |
-| 1 | event | LogEvent code (see `common/cpp/log_events.h`) |
+| 1 | event | LogEvent code (see [`common/cpp/log_events.h`](common/cpp/log_events.h)) |
 | 2–5 | context | 32-bit unsigned context value, big-endian (e.g. `millis()`, error code) |
 | 6 | reserved | 0x00 |
 | 7 | textFrames | Number of LOG_TEXT continuation frames to follow (0–7) |
