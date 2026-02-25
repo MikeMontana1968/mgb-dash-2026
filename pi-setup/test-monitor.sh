@@ -11,6 +11,7 @@ set -euo pipefail
 echo "=== MGB Dash 2026 — Test/Monitor Pi Setup ==="
 
 REPO_DIR="/home/pi/mgb-dash-2026"
+export PATH="/root/.local/bin:/home/pi/.local/bin:$PATH"
 
 # Install Python dependencies for tools
 echo "[1/2] Installing Python dependencies..."

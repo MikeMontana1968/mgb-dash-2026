@@ -20,6 +20,7 @@ set -euo pipefail
 echo "=== MGB Dash 2026 — GPS Display Pi Setup ==="
 
 REPO_DIR="/home/pi/mgb-dash-2026"
+export PATH="/root/.local/bin:/home/pi/.local/bin:$PATH"
 
 # Install system packages for LCD driver + GPS
 echo "[1/7] Installing system packages..."

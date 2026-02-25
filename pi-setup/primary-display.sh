@@ -15,6 +15,7 @@ set -euo pipefail
 echo "=== MGB Dash 2026 — Primary Display Pi Setup ==="
 
 REPO_DIR="/home/pi/mgb-dash-2026"
+export PATH="/root/.local/bin:/home/pi/.local/bin:$PATH"
 
 # Verify 64-bit OS
 echo "[1/5] Verifying 64-bit OS..."
