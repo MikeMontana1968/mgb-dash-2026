@@ -76,6 +76,7 @@ CAN_ID_GPS_LATITUDE      = 0x723  # GPS latitude
 CAN_ID_GPS_LONGITUDE     = 0x724  # GPS longitude
 CAN_ID_GPS_ELEVATION     = 0x725  # GPS elevation
 CAN_ID_GPS_AMBIENT_LIGHT = 0x726  # Ambient light category from time relative to sunset
+CAN_ID_GPS_UTC_OFFSET    = 0x727  # UTC offset in minutes (signed, e.g. -300=EST, -240=EDT)
 
 # Ambient light categories
 AMBIENT_DAYLIGHT       = 0

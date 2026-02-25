@@ -4,6 +4,7 @@ import abc
 import struct
 from vehicle_state import VehicleState
 from common.python import can_ids, leaf_messages, resolve_messages
+import clock_sync
 
 
 class DataSource(abc.ABC):
@@ -103,4 +104,11 @@ class DataSource(abc.ABC):
                 "ambient_light": cat,
                 "ambient_light_name": name,
             })
+            return
+
+        # ── GPS UTC offset (int16 signed, minutes) ────────────────
+        if arb_id == can_ids.CAN_ID_GPS_UTC_OFFSET:
+            offset_min = struct.unpack("<h", data[0:2])[0]
+            self._state.update_signals({"gps_utc_offset_min": offset_min})
+            clock_sync.try_sync_clock(self._state)
             return

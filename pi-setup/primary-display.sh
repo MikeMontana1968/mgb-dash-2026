@@ -18,7 +18,7 @@ REPO_DIR="/home/pi/mgb-dash-2026"
 export PATH="/root/.local/bin:/home/pi/.local/bin:$PATH"
 
 # Verify 64-bit OS
-echo "[1/5] Verifying 64-bit OS..."
+echo "[1/6] Verifying 64-bit OS..."
 if [ "$(uname -m)" != "aarch64" ]; then
     echo "ERROR: 64-bit Raspberry Pi OS required."
     echo "Flash a 64-bit image and re-run."
@@ -26,7 +26,7 @@ if [ "$(uname -m)" != "aarch64" ]; then
 fi
 
 # Install system dependencies for pycairo + pygame
-echo "[2/5] Installing system dependencies..."
+echo "[2/6] Installing system dependencies..."
 apt-get install -y \
     libcairo2-dev \
     pkg-config \
@@ -39,19 +39,28 @@ apt-get install -y \
     python3-numpy
 
 # Install Python dependencies via uv (workspace sync from repo root)
-echo "[3/5] Installing Python dependencies..."
+echo "[3/6] Installing Python dependencies..."
 cd "$REPO_DIR"
 uv sync --package mgb-primary-display
 
 # Waveshare 3.4" Round DSI LCD setup
-echo "[4/5] Waveshare 3.4\" Round DSI LCD setup..."
+echo "[4/6] Waveshare 3.4\" Round DSI LCD setup..."
 # TODO: Install Waveshare DSI display drivers
 # TODO: Configure for direct rendering
 echo "  NOTE: Waveshare DSI driver install is model-specific."
 echo "  Follow Waveshare wiki for 3.4\" Round DSI LCD."
 
+# Sudoers for GPS-based clock sync (passwordless date + timedatectl)
+echo "[5/6] Configuring sudoers for clock sync..."
+cat > /etc/sudoers.d/mgb-clock-sync <<'SUDOERS'
+# Allow pi user to set system clock and timezone from GPS CAN data
+pi ALL=(ALL) NOPASSWD: /usr/bin/date
+pi ALL=(ALL) NOPASSWD: /usr/bin/timedatectl
+SUDOERS
+chmod 0440 /etc/sudoers.d/mgb-clock-sync
+
 # Create systemd service for primary display
-echo "[5/5] Creating systemd service for primary display..."
+echo "[6/6] Creating systemd service for primary display..."
 cat > /etc/systemd/system/mgb-primary-display.service <<EOF
 [Unit]
 Description=MGB Dash — Primary Display (pycairo + pygame)

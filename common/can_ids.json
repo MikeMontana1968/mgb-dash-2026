@@ -120,6 +120,16 @@
         "bytes_1_7": "Reserved (0x00)"
       }
     },
+    "0x727": {
+      "name": "GPS_UTC_OFFSET",
+      "source": "gps_display",
+      "rate_hz": 2,
+      "description": "UTC offset in minutes (signed, e.g. -300=EST, -240=EDT)",
+      "payload": {
+        "bytes_0_1": "int16 signed little-endian, UTC offset in minutes",
+        "bytes_2_7": "Reserved (0x00)"
+      }
+    },
     "0x730": {
       "name": "SELF_TEST",
       "source": "any",

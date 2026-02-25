@@ -51,8 +51,9 @@ def _get_local_time(fix, lat, lon):
     Caches the timezone name and only re-lookups when lat/lon shifts by
     more than 0.5 degrees.  Falls back to system-local time if
     timezonefinder returns None (e.g. middle of ocean).
-    Returns a naive datetime in local time (tzinfo stripped for ephemeris
-    compatibility).
+    Returns (naive_local_dt, utc_offset_minutes):
+      - naive_local_dt: naive datetime in local time (tzinfo stripped for ephemeris)
+      - utc_offset_minutes: int, e.g. -300 for EST, -240 for EDT, or None if unknown
     """
     global _tz_cache_name, _tz_cache_lat, _tz_cache_lon
 
@@ -72,11 +73,13 @@ def _get_local_time(fix, lat, lon):
     if _tz_cache_name:
         aware_utc = utc_time.replace(tzinfo=ZoneInfo("UTC"))
         local_dt = aware_utc.astimezone(ZoneInfo(_tz_cache_name))
+        offset_td = local_dt.utcoffset()
+        utc_offset_min = int(offset_td.total_seconds() // 60) if offset_td is not None else None
         # Strip tzinfo — ephemeris expects naive local time
-        return local_dt.replace(tzinfo=None)
+        return local_dt.replace(tzinfo=None), utc_offset_min
 
     # Fallback: no timezone found, use system timezone
-    return fix.get_time(local_time=True)
+    return fix.get_time(local_time=True), None
 
 
 # ── Signal Handler ────────────────────────────────────────────────────
@@ -142,8 +145,14 @@ def WaitForGPSD(presenter, sig):
 
 
 # ── CAN Broadcasting ─────────────────────────────────────────────────
-def broadcast_can(bus, fix, gps_time, lat, lon, alt):
-    """Broadcast GPS data as CAN messages using monorepo IDs."""
+def broadcast_can(bus, fix, utc_time, local_time, utc_offset_min, lat, lon, alt):
+    """Broadcast GPS data as CAN messages using monorepo IDs.
+
+    Args:
+        utc_time:  naive datetime in UTC (for GPS_TIME, GPS_DATE)
+        local_time: naive datetime in local time (for ambient light calc)
+        utc_offset_min: int UTC offset in minutes (for GPS_UTC_OFFSET), or None
+    """
     try:
         # GPS_SPEED (0x720) — mph as 64-bit double
         mph = fix.speed() * 2.23694  # m/s -> mph
@@ -154,7 +163,7 @@ def broadcast_can(bus, fix, gps_time, lat, lon, alt):
         ))
 
         # GPS_TIME (0x721) — seconds since midnight UTC as 64-bit double
-        secs = gps_time.hour * 3600 + gps_time.minute * 60 + gps_time.second
+        secs = utc_time.hour * 3600 + utc_time.minute * 60 + utc_time.second
         bus.send(can.Message(
             arbitration_id=can_ids.CAN_ID_GPS_TIME,
             is_extended_id=False,
@@ -163,7 +172,7 @@ def broadcast_can(bus, fix, gps_time, lat, lon, alt):
 
         # GPS_DATE (0x722) — days since 2000-01-01 as 64-bit double
         epoch = date(2000, 1, 1)
-        days = (gps_time.date() - epoch).days
+        days = (utc_time.date() - epoch).days
         bus.send(can.Message(
             arbitration_id=can_ids.CAN_ID_GPS_DATE,
             is_extended_id=False,
@@ -191,13 +200,23 @@ def broadcast_can(bus, fix, gps_time, lat, lon, alt):
             data=bytearray(struct.pack("d", alt)),
         ))
 
-        # GPS_AMBIENT_LIGHT (0x726) — category byte 0-3
-        ambient = compute_ambient_light(gps_time, lat, lon)
+        # GPS_AMBIENT_LIGHT (0x726) — category byte 0-3 (uses local time)
+        ambient = compute_ambient_light(local_time, lat, lon)
         bus.send(can.Message(
             arbitration_id=can_ids.CAN_ID_GPS_AMBIENT_LIGHT,
             is_extended_id=False,
             data=bytearray([ambient]),
         ))
+
+        # GPS_UTC_OFFSET (0x727) — int16 signed, UTC offset in minutes
+        if utc_offset_min is not None:
+            payload = bytearray(8)
+            struct.pack_into("<h", payload, 0, utc_offset_min)
+            bus.send(can.Message(
+                arbitration_id=can_ids.CAN_ID_GPS_UTC_OFFSET,
+                is_extended_id=False,
+                data=payload,
+            ))
 
     except Exception as e:
         logger.error(f"CAN broadcast error: {e}")
@@ -291,14 +310,16 @@ def main():
                 lon = fix.lon
                 alt = fix.alt
                 speed_mps = fix.speed()
-                local_time = _get_local_time(fix, lat, lon)
+                local_time, utc_offset_min = _get_local_time(fix, lat, lon)
+                utc_time = fix.get_time(local_time=False)
 
                 # Update display
                 presenter.use_data(local_time, speed_mps, lat, lon, alt)
 
                 # Broadcast CAN messages
                 if can_bus is not None:
-                    broadcast_can(can_bus, fix, local_time, lat, lon, alt)
+                    broadcast_can(can_bus, fix, utc_time, local_time,
+                                  utc_offset_min, lat, lon, alt)
                     send_heartbeat(can_bus, heartbeat_counter)
                     heartbeat_counter += 1
             else:

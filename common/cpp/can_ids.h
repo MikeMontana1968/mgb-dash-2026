@@ -77,6 +77,7 @@ constexpr uint32_t CAN_ID_GPS_LATITUDE      = 0x723;  // Decimal degrees
 constexpr uint32_t CAN_ID_GPS_LONGITUDE     = 0x724;  // Decimal degrees
 constexpr uint32_t CAN_ID_GPS_ELEVATION     = 0x725;  // Meters above sea level
 constexpr uint32_t CAN_ID_GPS_AMBIENT_LIGHT = 0x726;  // 0–3 category
+constexpr uint32_t CAN_ID_GPS_UTC_OFFSET    = 0x727;  // int16 signed, UTC offset in minutes
 
 // Ambient light categories (byte 0 of 0x726 payload)
 constexpr uint8_t AMBIENT_DAYLIGHT       = 0;

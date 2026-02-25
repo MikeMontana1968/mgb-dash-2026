@@ -184,8 +184,9 @@ class SyntheticSource(DataSource):
             "gps_date_days":      9551,   # ~2026-02-24
             "ambient_light_name": "DAYLIGHT",
             "ambient_light":      0,
+            "gps_utc_offset_min": -300,   # EST (UTC-5)
         })
-        for aid in range(0x720, 0x727):
+        for aid in range(0x720, 0x728):
             self._state.update_raw(aid, b"\x00" * 8)
 
     def _emit_heartbeats(self, t):
