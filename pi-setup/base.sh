@@ -75,29 +75,31 @@ for mod in can can_raw can_dev; do
 done
 
 # Configure Innomaker USB2CAN V3.3 (gs_usb) → can0 at 500 kbps
-# Uses /etc/network/interfaces drop-in — matches proven prototype pi3-a.local
+# Uses a systemd service (works on both Bullseye and Bookworm)
+# Prototype pi3-a.local used /etc/network/interfaces but Bookworm uses NetworkManager
 echo "[7/11] Configuring USB2CAN (can0 at 500 kbps)..."
-cat > /etc/network/interfaces.d/can0 <<'EOF'
-# Innomaker USB2CAN V3.3 (gs_usb) — 500 kbps
-# Matches prototype pi3-a.local configuration
-auto can0
-iface can0 inet manual
-    pre-up /sbin/ip link set can0 down
-    pre-up /sbin/ip link set can0 txqueuelen 1000 type can bitrate 500000
-    up /sbin/ifconfig can0 up
-    down /sbin/ifconfig can0 down
+cat > /etc/systemd/system/can0.service <<'EOF'
+[Unit]
+Description=Bring up CAN0 interface (Innomaker USB2CAN V3.3, 500 kbps)
+After=network.target
+ConditionPathExists=/sys/class/net/can0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ip link set can0 txqueuelen 1000 type can bitrate 500000
+ExecStart=/sbin/ip link set can0 up
+ExecStop=/sbin/ip link set can0 down
+
+[Install]
+WantedBy=multi-user.target
 EOF
+systemctl daemon-reload
+systemctl enable can0.service
 
-# Ensure /etc/network/interfaces sources the drop-in directory
-if ! grep -q "source /etc/network/interfaces.d/" /etc/network/interfaces 2>/dev/null; then
-    echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
-fi
-
-# Remove any old can0.service if present (we use /etc/network/interfaces now)
-if [ -f /etc/systemd/system/can0.service ]; then
-    systemctl disable can0.service 2>/dev/null || true
-    rm -f /etc/systemd/system/can0.service
-    systemctl daemon-reload
+# Clean up any old /etc/network/interfaces CAN config
+if [ -f /etc/network/interfaces.d/can0 ]; then
+    rm -f /etc/network/interfaces.d/can0
 fi
 
 # Configure PCF8523 I2C real-time clock
