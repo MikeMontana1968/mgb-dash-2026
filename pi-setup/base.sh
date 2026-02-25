@@ -21,6 +21,10 @@ set -euo pipefail
 
 echo "=== MGB Dash 2026 — Base Pi Setup ==="
 
+# Disable unnecessary services that slow boot
+systemctl disable ModemManager.service 2>/dev/null || true
+systemctl mask ModemManager.service 2>/dev/null || true
+
 # Update system
 echo "[1/11] Updating system packages..."
 apt-get update && apt-get upgrade -y
