@@ -20,6 +20,8 @@ import signal
 import struct
 import time
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
+from timezonefinder import TimezoneFinder
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -35,6 +37,46 @@ from tendo import singleton
 
 import ephemeris
 from presenter import Presenter
+
+# ── Timezone Lookup ──────────────────────────────────────────────────
+_tf = TimezoneFinder()
+_tz_cache_name = None
+_tz_cache_lat = None
+_tz_cache_lon = None
+
+
+def _get_local_time(fix, lat, lon):
+    """Convert GPS UTC time to local time using GPS-derived timezone.
+
+    Caches the timezone name and only re-lookups when lat/lon shifts by
+    more than 0.5 degrees.  Falls back to system-local time if
+    timezonefinder returns None (e.g. middle of ocean).
+    Returns a naive datetime in local time (tzinfo stripped for ephemeris
+    compatibility).
+    """
+    global _tz_cache_name, _tz_cache_lat, _tz_cache_lon
+
+    utc_time = fix.get_time(local_time=False)
+
+    # Re-lookup timezone when position changes significantly
+    if (_tz_cache_lat is None
+            or abs(lat - _tz_cache_lat) > 0.5
+            or abs(lon - _tz_cache_lon) > 0.5):
+        tz_name = _tf.timezone_at(lat=lat, lng=lon)
+        if tz_name:
+            _tz_cache_name = tz_name
+            _tz_cache_lat = lat
+            _tz_cache_lon = lon
+            logger.info(f"Timezone resolved: {tz_name} (lat={lat:.2f}, lon={lon:.2f})")
+
+    if _tz_cache_name:
+        aware_utc = utc_time.replace(tzinfo=ZoneInfo("UTC"))
+        local_dt = aware_utc.astimezone(ZoneInfo(_tz_cache_name))
+        # Strip tzinfo — ephemeris expects naive local time
+        return local_dt.replace(tzinfo=None)
+
+    # Fallback: no timezone found, use system timezone
+    return fix.get_time(local_time=True)
 
 
 # ── Signal Handler ────────────────────────────────────────────────────
@@ -245,11 +287,11 @@ def main():
                     can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.GPS_FIX_ACQUIRED)
 
                 # Normal operation — valid satellite fix
-                local_time = fix.get_time(local_time=True)
-                speed_mps = fix.speed()
                 lat = fix.lat
                 lon = fix.lon
                 alt = fix.alt
+                speed_mps = fix.speed()
+                local_time = _get_local_time(fix, lat, lon)
 
                 # Update display
                 presenter.use_data(local_time, speed_mps, lat, lon, alt)

@@ -12,6 +12,7 @@ dependencies = [
     "spidev>=3.5; sys_platform == 'linux'",
     "RPi.GPIO>=0.7.0; sys_platform == 'linux'",
     "tendo>=0.3.0",
+    "timezonefinder>=6.0",
 ]
 
 [build-system]

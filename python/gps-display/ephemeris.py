@@ -58,7 +58,7 @@ def siderealTime(d, lw):
 
 
 def toJulian(date):
-    return (time.mktime(date.timetuple()) * 1000) / dayMs - 0.5 + J1970
+    return (date.timestamp() * 1000) / dayMs - 0.5 + J1970
 
 
 def fromJulian(j):
