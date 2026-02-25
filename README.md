@@ -280,6 +280,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 ---
 
 ### GPS Display — `python/gps-display/`
+<img src="docs/images/gps-face.jpg" alt="GPS display" width="300">
 
 **Role:** GPS receiver, time source, ambient light calculator, astronomical display. Pi 3B + Waveshare 2" Round LCD + NEO-6M GPS.
 
