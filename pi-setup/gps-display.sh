@@ -6,8 +6,11 @@
 #   LCD:  Waveshare 1.28" GC9A01, 240x240, RGB565, SPI0 @ 40 MHz
 #         GPIO: DC=25, RST=27, BL=18 (PWM 1kHz), SPI0 (MOSI=10, SCK=11, CS=8)
 #         Driver bundled in python/gps-display/lib/ (lcdconfig.py + LCD_1inch28.py)
-#   GPS:  NEO-6M on UART (GPIO14 TXD0, GPIO15 RXD0) at 9600 baud → gpsd daemon
-#   CAN:  Innomaker USB2CAN (gs_usb driver) → SocketCAN can0
+#   GPS:  NEO-6M on PL011 UART (/dev/ttyAMA0 GPIO14/15) at 9600 baud → gpsd daemon
+#         Bluetooth is disabled to free PL011 for GPS (more reliable than mini UART)
+#   CAN:  Innomaker USB2CAN (gs_usb) → SocketCAN can0 (configured by base.sh)
+#
+# Configuration verified against running prototype pi3-a.local
 #
 # Prerequisites: Run base.sh first
 # Usage: sudo bash gps-display.sh
@@ -16,67 +19,104 @@ set -euo pipefail
 
 echo "=== MGB Dash 2026 — GPS Display Pi Setup ==="
 
+REPO_DIR="/home/pi/mgb-dash-2026"
+
 # Install system packages for LCD driver + GPS
-echo "[1/5] Installing system packages..."
+echo "[1/7] Installing system packages..."
 apt-get install -y \
     gpsd \
     gpsd-clients \
+    gpsd-tools \
     python3-numpy \
     python3-spidev \
     python3-rpi-gpio
 
 # Install Python dependencies via uv
-echo "[2/5] Installing Python dependencies..."
-cd /home/pi/mgb-dash-2026/python/gps-display
+echo "[2/7] Installing Python dependencies..."
+cd "$REPO_DIR/python/gps-display"
 uv sync
 
 # Enable SPI for GC9A01 display
-echo "[3/5] Enabling SPI interface..."
+echo "[3/7] Enabling SPI interface..."
 raspi-config nonint do_spi 0
 
-# Enable UART for GPS receiver and configure gpsd
-echo "[4/5] Configuring UART + gpsd for GPS..."
-# Disable serial console, enable UART hardware
-raspi-config nonint do_serial 1    # disable console
-raspi-config nonint do_serial_hw 1 # enable hardware UART
-# Add to config.txt if not already present
-if ! grep -q "enable_uart=1" /boot/firmware/config.txt; then
-    echo "enable_uart=1" >> /boot/firmware/config.txt
+# Disable Bluetooth to free PL011 UART for GPS
+# Pi 3B default: PL011 (/dev/ttyAMA0) → Bluetooth, mini UART (/dev/ttyS0) → GPIO
+# With disable-bt: PL011 (/dev/ttyAMA0) → GPIO (better clock, more reliable for GPS)
+echo "[4/7] Disabling Bluetooth, configuring UART for GPS..."
+CONFIG_TXT="/boot/firmware/config.txt"
+[ -f "$CONFIG_TXT" ] || CONFIG_TXT="/boot/config.txt"
+if ! grep -q "dtoverlay=disable-bt" "$CONFIG_TXT" 2>/dev/null; then
+    echo "dtoverlay=disable-bt" >> "$CONFIG_TXT"
 fi
+if ! grep -q "enable_uart=1" "$CONFIG_TXT" 2>/dev/null; then
+    echo "enable_uart=1" >> "$CONFIG_TXT"
+fi
+# Disable Bluetooth systemd services
+systemctl disable hciuart.service 2>/dev/null || true
+systemctl disable bluetooth.service 2>/dev/null || true
+# Disable serial console, enable hardware UART
+raspi-config nonint do_serial 1    # disable serial console
+raspi-config nonint do_serial_hw 1 # enable hardware UART
 
-# Configure gpsd to listen on UART (NEO-6M at 9600 baud on /dev/ttyAMA0)
+# Configure gpsd for PL011 UART
+# Device: /dev/ttyAMA0 (PL011 — freed from Bluetooth by dtoverlay=disable-bt)
+# Options: -n (poll immediately), -G (allow remote connections for monitoring)
+echo "[5/7] Configuring gpsd..."
 cat > /etc/default/gpsd <<'EOF'
 # MGB Dash 2026 — gpsd configuration for NEO-6M GPS
-START_DAEMON="true"
-GPSD_OPTIONS="-n"
+# PL011 UART on GPIO14/15 (Bluetooth disabled to free this UART)
 DEVICES="/dev/ttyAMA0"
-USBAUTO="false"
-GPSD_SOCKET="/var/run/gpsd.sock"
+START_DAEMON="true"
+GPSD_OPTIONS="-n -G"
+GPSD_SOCKET="/var/run/gpsd.socket"
+USBAUTO="true"
 EOF
 
-# Enable gpsd socket activation
-systemctl enable gpsd.socket
-systemctl start gpsd.socket
+echo "[6/7] Enabling gpsd remote access..."
+# Enable gpsd remote access on port 2947 (all interfaces)
+# Override default gpsd.socket to listen on 0.0.0.0:2947 and [::]:2947
+mkdir -p /etc/systemd/system/gpsd.socket.d
+cat > /etc/systemd/system/gpsd.socket.d/remote-access.conf <<'EOF'
+# Allow remote gpsd connections for CAN bus monitoring tools
+[Socket]
+# Clear inherited ListenStream values, then redefine
+ListenStream=
+ListenStream=/run/gpsd.sock
+ListenStream=[::]:2947
+ListenStream=0.0.0.0:2947
+SocketMode=0600
+BindIPv6Only=ipv6-only
+EOF
 
-# Configure Innomaker USB2CAN
-echo "[5/5] Configuring USB2CAN (gs_usb)..."
-modprobe gs_usb
-# Create systemd service to bring up can0 at boot
-cat > /etc/systemd/system/can0.service <<'EOF'
+systemctl daemon-reload
+systemctl enable gpsd.socket
+systemctl restart gpsd.socket
+
+# Create systemd service for GPS display application
+echo "[7/7] Creating systemd service for GPS display..."
+cat > /etc/systemd/system/mgb-gps-display.service <<EOF
 [Unit]
-Description=Bring up CAN0 interface
-After=network.target
+Description=MGB Dash — GPS Display (LCD + CAN writer)
+After=network.target gpsd.socket
+Wants=gpsd.socket
 
 [Service]
-Type=oneshot
-ExecStart=/sbin/ip link set can0 type can bitrate 500000
-ExecStartPost=/sbin/ip link set can0 up
-RemainAfterExit=yes
+WorkingDirectory=$REPO_DIR/python/gps-display
+ExecStart=$REPO_DIR/python/gps-display/.venv/bin/python -u main.py
+Restart=always
+RestartSec=120
+StandardOutput=journal
+StandardError=journal
+User=pi
 
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable can0.service
+
+systemctl daemon-reload
+systemctl enable mgb-gps-display.service
 
 echo "=== GPS display setup complete ==="
 echo "Reboot required for UART, SPI, and CAN changes."
+echo "After reboot, the GPS display will start automatically."
