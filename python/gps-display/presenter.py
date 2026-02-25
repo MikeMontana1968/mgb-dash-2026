@@ -10,7 +10,7 @@ Drawing order (each frame at ~1 Hz):
   3. Sun arc — outer rim, golden (205,205,99), 10px wide, sunrise->sunset span
   4. Hour ticks — 4 cardinal marks at 0h, 6h, 12h, 24h
   5. Moon phase icon — bottom-right, Unicode glyph from moon_phases.ttf
-  6. Current time tick — blinking ray at current hour position (blinks every 2s)
+  6. Current time tick — blinking ray at current hour position (1 Hz white/black alternation)
   7. Date — "Sun 23 Feb", medium font, gray, Y=165
   8. Time — "1:30", large 80pt font, white, centered
 """
