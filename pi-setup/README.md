@@ -82,15 +82,6 @@ sudo bash ~/mgb-dash-2026/pi-setup/gps-display.sh
 > The script will ask about serial port login — answer **No**. This disables the
 > login console on the UART so GPSD can use it for GPS data. It does not affect SSH.
 
-Is CANBus Adapter installed?
-  ip link show can0
-
-  Is GPSD running?
-    systemctl status gpsd.socket
-
-  is GPS display service enabled?
-    systemctl status mgb-gps-display
-
 **Primary Display** (Pi 4B + Waveshare 3.4" DSI LCD):
 ```bash
 sudo bash ~/mgb-dash-2026/pi-setup/primary-display.sh
