@@ -35,7 +35,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/62/1e/8ffc5bbbbea1a4501
 [[package]]
 name = "mgb-gps-display"
 version = "0.1.0"
-source = { editable = "gps-display" }
+source = { editable = "python/gps-display" }
 dependencies = [
     { name = "astral" },
     { name = "gpsd-py3" },
@@ -65,7 +65,7 @@ requires-dist = [
 [[package]]
 name = "mgb-primary-display"
 version = "0.1.0"
-source = { editable = "primary-display" }
+source = { editable = "python/primary-display" }
 dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
@@ -87,7 +87,7 @@ requires-dist = [
 [[package]]
 name = "mgb-tools"
 version = "0.1.0"
-source = { editable = "tools" }
+source = { editable = "python/tools" }
 dependencies = [
     { name = "python-can" },
 ]
