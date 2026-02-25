@@ -36,3 +36,6 @@ logs/
 
 # Node (phone-app)
 node_modules/
+
+# Pi setup secrets
+pi-setup/wifi-networks.conf

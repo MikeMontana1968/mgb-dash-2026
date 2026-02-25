@@ -30,6 +30,10 @@ hardware (SPI for GPS, DSI for primary display).
 
 5. Write the image
 
+> **WiFi note:** Raspberry Pi Imager only supports one network. Additional networks
+> (phone hotspot, workshop, etc.) are added automatically by `base.sh` — see
+> [WiFi Networks](#wifi-networks) below.
+
 ## Step 2 — First Boot
 
 Insert the SD card, power on, and wait ~90 seconds for first boot to complete.
@@ -45,15 +49,29 @@ ssh pi@gps.local
 git clone https://github.com/MikeMontana1968/mgb-dash-2026.git ~/mgb-dash-2026
 ```
 
-## Step 4 — Run Base Setup
+## Step 4 — WiFi Networks
 
-Common to **all** Pis. Installs packages, uv, CAN bus, user groups, swap, RTC.
+Before running setup, configure your WiFi credentials:
+
+```bash
+cd ~/mgb-dash-2026/pi-setup
+cp wifi-networks.example.conf wifi-networks.conf
+nano wifi-networks.conf
+```
+
+Edit `wifi-networks.conf` with your networks (one per line: `SSID,PASSWORD,PRIORITY`).
+Higher priority networks are tried first. The file is gitignored so credentials stay local.
+
+## Step 5 — Run Base Setup
+
+Common to **all** Pis. Installs packages, uv, CAN bus, user groups, swap, RTC,
+WiFi networks, and the auto-update timer.
 
 ```bash
 sudo bash ~/mgb-dash-2026/pi-setup/base.sh
 ```
 
-## Step 5 — Run Role-Specific Setup
+## Step 6 — Run Role-Specific Setup
 
 Pick one based on which Pi you're building:
 
@@ -72,7 +90,7 @@ sudo bash ~/mgb-dash-2026/pi-setup/primary-display.sh
 sudo bash ~/mgb-dash-2026/pi-setup/test-monitor.sh
 ```
 
-## Step 6 — Reboot
+## Step 7 — Reboot
 
 ```bash
 sudo reboot
@@ -81,7 +99,96 @@ sudo reboot
 After reboot:
 - CAN bus (`can0`) comes up automatically at 500 kbps
 - GPS display / primary display starts automatically via systemd
+- Auto-update timer checks for new code every 5 minutes
 - RTC keeps time across power cycles
+
+---
+
+## Deploying Code Updates
+
+There are two ways to push code to the Pis:
+
+### Option A — PowerShell Deploy Script (immediate)
+
+From your Windows dev machine, after committing and pushing to GitHub:
+
+```powershell
+# Deploy to a specific Pi
+.\deploy.ps1 gps
+.\deploy.ps1 primary
+.\deploy.ps1 testmon
+
+# Deploy to all Pis at once
+.\deploy.ps1 all
+
+# Check status of all Pis (commit, service, uptime, temp)
+.\deploy.ps1 status
+```
+
+The script SSHes into each Pi, runs `git pull`, and restarts the service.
+Pis that are offline are skipped with a message.
+
+> **Tip:** Edit the `$Pis` hashtable at the top of `deploy.ps1` if your
+> hostnames differ from the defaults (`gps.local`, `primary.local`, `testmon.local`).
+
+### Option B — Auto-Update Timer (background)
+
+Every Pi runs an `mgb-update.timer` that:
+1. Fires every 5 minutes (with 30s jitter)
+2. Runs `git pull --ff-only`
+3. If code changed, restarts the active MGB service
+4. If offline or nothing changed, does nothing (silent)
+
+This is installed by `base.sh` and requires no action. It means that when you
+enable WiFi/internet on the car, Pis will self-update within 5 minutes.
+
+```bash
+# Check timer status on a Pi
+systemctl status mgb-update.timer
+
+# View update log
+journalctl -t mgb-update
+
+# Trigger an immediate update
+sudo systemctl start mgb-update.service
+
+# Disable auto-updates on a specific Pi
+sudo systemctl disable mgb-update.timer
+```
+
+---
+
+## WiFi Networks
+
+Pis can connect to multiple WiFi networks with priority ordering.
+This is useful for:
+- **Workshop WiFi** (priority 100) — primary development network
+- **Phone hotspot** (priority 50) — field updates at a car show
+
+### Setup
+
+1. Copy the template: `cp wifi-networks.example.conf wifi-networks.conf`
+2. Edit with your credentials:
+   ```
+   HomeWorkshop,YourPasswordHere,100
+   PhoneHotspot,HotspotPassword,50
+   ```
+3. Run `base.sh` (or re-run it to update networks)
+
+The conf file is gitignored. Networks are configured via NetworkManager (`nmcli`)
+with `autoconnect` enabled and priority ordering.
+
+### Adding a network later
+
+SSH into the Pi and add directly:
+```bash
+sudo nmcli connection add type wifi con-name "NewNetwork" \
+    ssid "NewNetwork" wifi-sec.key-mgmt wpa-psk \
+    wifi-sec.psk "password" connection.autoconnect yes \
+    connection.autoconnect-priority 75
+```
+
+---
 
 ## Verifying the Setup
 
@@ -103,12 +210,21 @@ systemctl status mgb-primary-display      # Primary display Pi
 journalctl -u mgb-gps-display -f          # GPS display Pi
 journalctl -u mgb-primary-display -f      # Primary display Pi
 
+# Auto-update timer
+systemctl status mgb-update.timer
+journalctl -t mgb-update
+
+# WiFi networks
+nmcli connection show
+
 # RTC
 sudo hwclock -r
 
 # I2C devices (RTC should appear at 0x68)
 i2cdetect -y 1
 ```
+
+---
 
 ## Hardware Reference
 
@@ -133,18 +249,7 @@ All Pis use the same USB-to-CAN adapter.
 - Overlay: `dtoverlay=i2c-rtc,pcf8523`
 - Keeps time when no network or GPS is available
 
-## Updating
-
-To pull the latest code and restart services:
-
-```bash
-cd ~/mgb-dash-2026 && git pull
-
-# Restart whichever service this Pi runs:
-sudo systemctl restart mgb-gps-display
-# or
-sudo systemctl restart mgb-primary-display
-```
+---
 
 ## What Each Script Does
 
@@ -157,6 +262,8 @@ sudo systemctl restart mgb-primary-display
 6. CAN bus interface (`/etc/network/interfaces.d/can0`)
 7. PCF8523 I2C RTC
 8. Clone/update monorepo
+9. WiFi networks from `wifi-networks.conf`
+10. Auto-update timer (`mgb-update.timer` every 5 min)
 
 ### gps-display.sh
 1. gpsd + LCD/SPI packages
