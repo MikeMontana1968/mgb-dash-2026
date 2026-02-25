@@ -32,10 +32,10 @@ apt-get install -y \
     python3-spidev \
     python3-rpi-lgpio
 
-# Install Python dependencies via uv
+# Install Python dependencies via uv (workspace sync from repo root)
 echo "[2/7] Installing Python dependencies..."
-cd "$REPO_DIR/python/gps-display"
-uv sync
+cd "$REPO_DIR"
+uv sync --package mgb-gps-display
 
 # Enable SPI for GC9A01 display
 echo "[3/7] Enabling SPI interface..."
@@ -104,7 +104,7 @@ Wants=gpsd.socket
 
 [Service]
 WorkingDirectory=$REPO_DIR/python/gps-display
-ExecStart=$REPO_DIR/python/gps-display/.venv/bin/python -u main.py
+ExecStart=$REPO_DIR/.venv/bin/python -u main.py
 Restart=always
 RestartSec=120
 StandardOutput=journal

@@ -38,10 +38,10 @@ apt-get install -y \
     libfreetype6-dev \
     python3-numpy
 
-# Install Python dependencies via uv
+# Install Python dependencies via uv (workspace sync from repo root)
 echo "[3/5] Installing Python dependencies..."
-cd "$REPO_DIR/python/primary-display"
-uv sync
+cd "$REPO_DIR"
+uv sync --package mgb-primary-display
 
 # Waveshare 3.4" Round DSI LCD setup
 echo "[4/5] Waveshare 3.4\" Round DSI LCD setup..."
@@ -59,7 +59,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=$REPO_DIR/python/primary-display
-ExecStart=$REPO_DIR/python/primary-display/.venv/bin/python -u main.py --source can
+ExecStart=$REPO_DIR/.venv/bin/python -u main.py --source can
 Restart=always
 RestartSec=120
 StandardOutput=journal

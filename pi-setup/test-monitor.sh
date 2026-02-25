@@ -13,10 +13,10 @@ echo "=== MGB Dash 2026 — Test/Monitor Pi Setup ==="
 REPO_DIR="/home/pi/mgb-dash-2026"
 export PATH="/root/.local/bin:/home/pi/.local/bin:$PATH"
 
-# Install Python dependencies for tools
+# Install Python dependencies for tools (workspace sync from repo root)
 echo "[1/2] Installing Python dependencies..."
-cd "$REPO_DIR/python/tools"
-uv sync
+cd "$REPO_DIR"
+uv sync --package mgb-tools
 
 echo "[2/2] CAN bus configured by base.sh"
 
