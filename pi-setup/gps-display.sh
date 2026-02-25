@@ -50,15 +50,18 @@ CONFIG_TXT="/boot/firmware/config.txt"
 if ! grep -q "dtoverlay=disable-bt" "$CONFIG_TXT" 2>/dev/null; then
     echo "dtoverlay=disable-bt" >> "$CONFIG_TXT"
 fi
-if ! grep -q "enable_uart=1" "$CONFIG_TXT" 2>/dev/null; then
-    echo "enable_uart=1" >> "$CONFIG_TXT"
-fi
 # Disable Bluetooth systemd services
 systemctl disable hciuart.service 2>/dev/null || true
 systemctl disable bluetooth.service 2>/dev/null || true
 # Disable serial console, enable hardware UART
 raspi-config nonint do_serial 1    # disable serial console
-raspi-config nonint do_serial_hw 1 # enable hardware UART
+raspi-config nonint do_serial_hw 0 # enable hardware UART (0 = enable)
+# Force enable_uart=1 (raspi-config may set it to 0, override it)
+if grep -q "enable_uart=" "$CONFIG_TXT" 2>/dev/null; then
+    sed -i 's/enable_uart=.*/enable_uart=1/' "$CONFIG_TXT"
+else
+    echo "enable_uart=1" >> "$CONFIG_TXT"
+fi
 
 # Configure gpsd for PL011 UART
 # Device: /dev/ttyAMA0 (PL011 — freed from Bluetooth by dtoverlay=disable-bt)
