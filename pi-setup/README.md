@@ -79,6 +79,8 @@ Pick one based on which Pi you're building:
 ```bash
 sudo bash ~/mgb-dash-2026/pi-setup/gps-display.sh
 ```
+> The script will ask about serial port login — answer **No**. This disables the
+> login console on the UART so GPSD can use it for GPS data. It does not affect SSH.
 
 **Primary Display** (Pi 4B + Waveshare 3.4" DSI LCD):
 ```bash
@@ -101,6 +103,33 @@ After reboot:
 - GPS display / primary display starts automatically via systemd
 - Auto-update timer checks for new code every 5 minutes
 - RTC keeps time across power cycles
+
+### Post-Reboot Verification — GPS Display
+
+```bash
+# SSH back in
+ssh pi@gps.local
+
+# GPSD socket listening?
+systemctl status gpsd.socket
+
+# GPS display service enabled and running?
+systemctl status mgb-gps-display
+
+# CAN bus (only active when USB adapter is plugged in)
+ip link show can0
+
+# GPS data stream (once NEO-6M is connected)
+gpsmon
+```
+
+### Post-Reboot Verification — Primary Display
+
+```bash
+ssh pi@primary.local
+systemctl status mgb-primary-display
+ip link show can0
+```
 
 ---
 
