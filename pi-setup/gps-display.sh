@@ -29,7 +29,7 @@ apt-get install -y \
     gpsd-tools \
     python3-numpy \
     python3-spidev \
-    python3-rpi-gpio
+    python3-rpi-lgpio
 
 # Install Python dependencies via uv
 echo "[2/7] Installing Python dependencies..."
