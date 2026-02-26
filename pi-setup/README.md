@@ -46,6 +46,7 @@ ssh pi@gps.local
 ## Step 3 — Clone the Repo
 
 ```bash
+sudo apt-get install -y git
 git clone https://github.com/MikeMontana1968/mgb-dash-2026.git ~/mgb-dash-2026
 ```
 
@@ -126,9 +127,34 @@ gpsmon
 ### Post-Reboot Verification — Primary Display
 
 ```bash
+# SSH back in
 ssh pi@primary.local
+
+# Service enabled and running?
 systemctl status mgb-primary-display
+
+# Service logs (live tail)
+journalctl -u mgb-primary-display -f
+
+# CAN bus (only active when USB adapter is plugged in)
 ip link show can0
+
+# Cairo + pygame installed correctly?
+python3 -c "import cairo; print('pycairo', cairo.version)"
+python3 -c "import pygame; print('pygame', pygame.ver)"
+
+# uv venv has all dependencies?
+cd ~/mgb-dash-2026 && uv sync --package mgb-primary-display
+
+# Sudoers for clock sync (should run without password prompt)
+sudo -n date
+sudo -n timedatectl status
+
+# DSI display detected?
+cat /sys/class/drm/card?-DSI-1/status 2>/dev/null || echo "No DSI display found"
+
+# Auto-update timer running?
+systemctl status mgb-update.timer
 ```
 
 ---
