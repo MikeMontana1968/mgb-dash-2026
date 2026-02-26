@@ -27,16 +27,27 @@ class DisplayEngine:
 
     def run(self):
         # Platform-specific SDL setup
-        if sys.platform != "win32" and not os.environ.get("DISPLAY"):
+        headless = sys.platform != "win32" and not os.environ.get("DISPLAY")
+        if headless:
             os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
 
         pygame.init()
 
         flags = 0
-        if sys.platform != "win32" and not os.environ.get("DISPLAY"):
+        if headless:
             flags = pygame.FULLSCREEN
 
-        screen = pygame.display.set_mode((self._width, self._height), flags)
+        try:
+            screen = pygame.display.set_mode((self._width, self._height), flags)
+        except pygame.error as e:
+            if headless:
+                logger.warning("Display init failed (%s), falling back to dummy driver", e)
+                pygame.quit()
+                os.environ["SDL_VIDEODRIVER"] = "dummy"
+                pygame.init()
+                screen = pygame.display.set_mode((self._width, self._height))
+            else:
+                raise
         pygame.display.set_caption("MGB Dash 2026")
         clock = pygame.time.Clock()
 
