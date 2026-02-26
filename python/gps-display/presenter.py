@@ -163,6 +163,22 @@ class Presenter:
         self.canvas = ImageDraw.Draw(self.CompostingImage)
         return self.canvas
 
+    def set_backlight(self, ambient_category: int):
+        """Adjust LCD backlight PWM based on ambient light category.
+
+        Category mapping:
+            0 (DAYLIGHT)        -> 100%
+            1 (EARLY_TWILIGHT)  -> 70%
+            2 (LATE_TWILIGHT)   -> 40%
+            3 (DARKNESS)        -> 15%
+        """
+        duty_map = {0: 100, 1: 70, 2: 40, 3: 15}
+        duty = duty_map.get(ambient_category, 100)
+        try:
+            self.disp.bl_DutyCycle(duty)
+        except Exception as e:
+            self.logger.error("Backlight set failed: %s", e)
+
     def use_data(self, local_time: datetime, speedMps: float, lat: float, lng: float, alt: float):
         self.counter += 1
         t = local_time.strftime("%H:%M:%S")

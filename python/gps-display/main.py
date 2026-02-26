@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from common.python import can_ids
 from common.python.can_log import can_log, LogRole, LogLevel, LogEvent
+from common.python.can_listener import CanListener
 from common.python.log_setup import setup_logging
 
 logger = setup_logging("gps")
@@ -284,11 +285,23 @@ def main():
 
     # Initialize CAN bus (non-fatal if unavailable)
     can_bus = None
+    can_listener = None
     try:
         can_bus = can.Bus(channel='can0', interface='socketcan')
         logger.info("CAN bus initialized on can0")
     except Exception as e:
         logger.error(f"CAN bus init failed (continuing without CAN): {e}")
+
+    # CAN listener for self-test receive
+    def _on_self_test(arb_id, data):
+        logger.info(f"Self-test received (0x{arb_id:03X}, data={data.hex()})")
+        can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.SELF_TEST_START)
+        can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.SELF_TEST_PASS)
+
+    if can_bus is not None:
+        can_listener = CanListener(can_bus, role_char=ord('G'), logger=logger)
+        can_listener.on_self_test(_on_self_test)
+        can_listener.start()
 
     heartbeat_counter = 0
     has_fix = True  # just came out of WaitForGPSD with a valid fix
@@ -315,6 +328,10 @@ def main():
 
                 # Update display
                 presenter.use_data(local_time, speed_mps, lat, lon, alt)
+
+                # Adjust backlight based on ambient light
+                ambient = compute_ambient_light(local_time, lat, lon)
+                presenter.set_backlight(ambient)
 
                 # Broadcast CAN messages
                 if can_bus is not None:
@@ -348,6 +365,8 @@ def main():
 
     # Graceful shutdown
     logger.info("Shutting down...")
+    if can_listener is not None:
+        can_listener.stop()
     if can_bus is not None:
         can_bus.shutdown()
     logger.info("GPS display stopped.")

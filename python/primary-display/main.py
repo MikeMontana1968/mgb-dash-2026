@@ -64,7 +64,8 @@ def main():
     elif args.source == "replay":
         raise NotImplementedError("Replay source not yet implemented (Phase 3)")
     elif args.source == "can":
-        raise NotImplementedError("CAN bus source not yet implemented (Phase 4)")
+        from data_sources.can_source import CanBusSource
+        source = CanBusSource(state)
 
     # ── Contexts ─────────────────────────────────────────────────────
     from contexts.diagnostics import DiagnosticsContext

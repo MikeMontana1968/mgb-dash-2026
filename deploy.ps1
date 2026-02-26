@@ -1,4 +1,4 @@
-# MGB Dash 2026 — Deploy to Raspberry Pi(s)
+﻿# MGB Dash 2026 — Deploy to Raspberry Pi(s)
 #
 # Pushes latest code to target Pi(s) via SSH + git pull,
 # then restarts the appropriate systemd service.
