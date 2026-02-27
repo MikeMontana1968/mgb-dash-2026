@@ -121,7 +121,7 @@ class DrivingContext(Context):
 
         # ── Values past outermost colored edge ────────────────────────
         self._draw_arc_value(ctx, cx, cy, _RPM_BAND, rpm_ratio,
-                             f"{abs(rpm):.0f}")
+                             f"{round(abs(rpm), -2):.0f}")
         self._draw_arc_value(ctx, cx, cy, _SPEED_BAND, speed_ratio,
                              f"{speed:.0f}")
         self._draw_arc_value(ctx, cx, cy, _RANGE_BAND, ratio_optimist,
