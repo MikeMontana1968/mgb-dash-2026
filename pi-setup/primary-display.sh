@@ -69,6 +69,7 @@ After=network.target
 [Service]
 WorkingDirectory=$REPO_DIR/python/primary-display
 ExecStart=$REPO_DIR/.venv/bin/python -u main.py --source can
+Environment=DISPLAY=:0
 Restart=always
 RestartSec=120
 StandardOutput=journal

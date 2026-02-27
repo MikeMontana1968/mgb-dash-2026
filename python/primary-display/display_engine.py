@@ -19,11 +19,13 @@ logger = logging.getLogger("dash")
 class DisplayEngine:
     """Main render loop: cairo surface -> pygame display at ~10 fps."""
 
-    def __init__(self, context_manager, state, width=800, height=800):
+    def __init__(self, context_manager, state, width=800, height=800,
+                 shift_advisor=None):
         self._cm = context_manager
         self._state = state
         self._width = width
         self._height = height
+        self._shift_advisor = shift_advisor
         self._running = False
 
     def run(self):
@@ -58,8 +60,10 @@ class DisplayEngine:
 
         try:
             while self._running:
-                # 1. Auto-transition check
+                # 1. Auto-transition check + shift advisor
                 self._cm.evaluate(self._state)
+                if self._shift_advisor:
+                    self._shift_advisor.evaluate(self._state)
 
                 # 2. Create cairo surface
                 surface = cairo.ImageSurface(

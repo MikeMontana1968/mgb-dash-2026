@@ -51,13 +51,22 @@ class SyntheticSource(DataSource):
     # ── Scenarios ────────────────────────────────────────────────────
 
     def _gen_all_signals(self, t):
-        self._emit_leaf_motor(t)
+        speed = 30 + 15 * math.sin(t * 0.2)
+        gear = self._gear_from_speed(speed)
+        # Periodically hold the wrong gear to trigger shift advice
+        cycle = int(t) % 40
+        if 10 < cycle < 15 and gear > 1:
+            gear -= 1   # one gear too low → upshift advice
+        elif 25 < cycle < 30 and gear < 4:
+            gear += 1   # one gear too high → downshift advice
+
+        self._emit_leaf_motor(t, speed, gear)
         self._emit_leaf_battery(t)
         self._emit_leaf_charger(t, charging=True)
         self._emit_leaf_temps(t, alert_cycle=True)
         self._emit_leaf_vcm()
         self._emit_resolve(t)
-        self._emit_body(t, speed_mph=30 + 15 * math.sin(t * 0.2))
+        self._emit_body(t, speed_mph=speed, gear=gear)
         self._emit_gps(t)
         self._emit_heartbeats(t, drop_one=True)
         self._emit_log_alerts(t)
@@ -70,12 +79,13 @@ class SyntheticSource(DataSource):
 
     def _gen_driving(self, t):
         speed = 35 + 20 * math.sin(t * 0.15)
-        self._emit_leaf_motor(t)
+        gear = self._gear_from_speed(speed)
+        self._emit_leaf_motor(t, speed, gear)
         self._emit_leaf_battery(t)
         self._emit_leaf_temps(t)
         self._emit_leaf_vcm()
         self._emit_resolve(t)
-        self._emit_body(t, speed_mph=speed)
+        self._emit_body(t, speed_mph=speed, gear=gear)
         self._emit_gps(t)
         self._emit_heartbeats(t)
 
@@ -86,10 +96,32 @@ class SyntheticSource(DataSource):
         self._emit_body(t, speed_mph=0)
         self._emit_heartbeats(t)
 
+    # ── Helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _gear_from_speed(speed_mph: float) -> int:
+        """Estimate gear from speed (simple threshold model)."""
+        if speed_mph <= 1:
+            return 0
+        return min(4, max(1, int(speed_mph / 15) + 1))
+
     # ── Emitters ─────────────────────────────────────────────────────
 
-    def _emit_leaf_motor(self, t):
-        rpm = int(2000 + 1500 * math.sin(t * 0.3))
+    def _emit_leaf_motor(self, t, speed_mph: float = 30.0, gear: int = 2):
+        # Compute realistic RPM from speed and gear ratio
+        _GEAR_RATIOS = {1: 3.41, 2: 2.166, 3: 1.38, 4: 1.00}
+        _DIFF = 3.909
+        _TIRE = 26.5
+        _RPM_BASE = 5280.0 * 12.0 / (60.0 * math.pi * _TIRE) * _DIFF
+
+        if gear >= 1 and gear <= 4 and speed_mph > 0.5:
+            expected_rpm = speed_mph * _RPM_BASE * _GEAR_RATIOS[gear]
+            # Add drift that periodically crosses shift thresholds
+            drift = 1200 * math.sin(t * 0.15)
+            rpm = int(max(0, expected_rpm + drift))
+        else:
+            rpm = 0
+
         torque = 80 + 40 * math.sin(t * 0.25)
         self._state.update_signals({
             "motor_rpm": rpm,
@@ -149,7 +181,7 @@ class SyntheticSource(DataSource):
         })
         self._state.update_raw(0x539, b"\x00" * 8)
 
-    def _emit_body(self, t, speed_mph: float):
+    def _emit_body(self, t, speed_mph: float, gear: int = None):
         flags = can_ids.BODY_FLAG_KEY_ON
         if speed_mph > 1 and math.sin(t * 0.5) > 0.7:
             flags |= can_ids.BODY_FLAG_BRAKE
@@ -158,9 +190,8 @@ class SyntheticSource(DataSource):
         if int(t) % 20 < 3:
             flags |= can_ids.BODY_FLAG_LEFT_TURN
 
-        gear = 0
-        if speed_mph > 1:
-            gear = min(4, max(1, int(speed_mph / 15) + 1))
+        if gear is None:
+            gear = self._gear_from_speed(speed_mph)
 
         self._state.update_signals({
             "key_on":          bool(flags & can_ids.BODY_FLAG_KEY_ON),

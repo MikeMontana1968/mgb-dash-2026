@@ -88,9 +88,14 @@ def main():
     }
     cm = ContextManager(contexts, initial=args.context)
 
+    # ── Shift advisor ──────────────────────────────────────────────
+    from shift_advisor import ShiftAdvisor
+    shift = ShiftAdvisor()
+
     # ── Display engine ───────────────────────────────────────────────
     from display_engine import DisplayEngine
-    engine = DisplayEngine(cm, state, width=args.width, height=args.height)
+    engine = DisplayEngine(cm, state, shift_advisor=shift,
+                           width=args.width, height=args.height)
 
     # ── Run ──────────────────────────────────────────────────────────
     source.start()
