@@ -1,4 +1,4 @@
-"""MGB Dash 2026 — Diagnostics context: CAN signal grid with freshness."""
+"""MGB Dash 2026 — Diagnostics context: two-column CAN signal table."""
 
 import math
 from typing import Optional
@@ -10,72 +10,78 @@ from rendering.colors import (
 from rendering.fonts import select_mono, select_sans
 from rendering.cairo_helpers import chord_half_width
 
-# (signal_key, display_label, unit)
+# (signal_key, display_label, unit, can_id_hex)
 SIGNAL_GROUPS = [
     ("LEAF MOTOR", [
-        ("motor_rpm",           "Motor RPM",    "RPM"),
-        ("available_torque_nm", "Avail Torque",  "Nm"),
-        ("failsafe",           "Failsafe",      ""),
+        ("motor_rpm",           "Motor RPM",    "RPM",  "1DA"),
+        ("available_torque_nm", "Avail Torque",  "Nm",   "1DA"),
+        ("failsafe",           "Failsafe",      "",     "1DA"),
     ]),
     ("LEAF BATTERY", [
-        ("battery_voltage_v",   "Battery V",    "V"),
-        ("battery_current_a",   "Battery A",    "A"),
-        ("soc_percent",         "SOC",          "%"),
-        ("soc_precise_percent", "SOC Precise",  "%"),
-        ("gids",                "GIDs",         ""),
-        ("soh_percent",         "SOH",          "%"),
-        ("battery_temp_c",      "Batt Temp",    "\u00b0C"),
+        ("battery_voltage_v",   "Battery V",    "V",    "1DB"),
+        ("battery_current_a",   "Battery A",    "A",    "1DB"),
+        ("soc_percent",         "SOC",          "%",    "1DB"),
+        ("soc_precise_percent", "SOC Precise",  "%",    "55B"),
+        ("gids",                "GIDs",         "",     "5BC"),
+        ("soh_percent",         "SOH",          "%",    "5BC"),
+        ("battery_temp_c",      "Batt Temp",    "\u00b0F",   "5C0"),
     ]),
     ("LEAF CHARGER", [
-        ("charge_power_kw", "Charge Power", "kW"),
+        ("charge_power_kw", "Charge Power", "kW",  "1DC"),
     ]),
     ("LEAF TEMPS", [
-        ("motor_temp_c",    "Motor Temp",    "\u00b0C"),
-        ("igbt_temp_c",     "IGBT Temp",     "\u00b0C"),
-        ("inverter_temp_c", "Inverter Temp", "\u00b0C"),
+        ("motor_temp_c",    "Motor Temp",    "\u00b0F",  "55A"),
+        ("igbt_temp_c",     "IGBT Temp",     "\u00b0F",  "55A"),
+        ("inverter_temp_c", "Inverter Temp", "\u00b0F",  "55A"),
     ]),
     ("LEAF VCM", [
-        ("main_relay_closed", "Main Relay", ""),
+        ("main_relay_closed", "Main Relay", "",  "390"),
     ]),
     ("RESOLVE", [
-        ("resolve_gear",           "Gear",      ""),
-        ("resolve_ignition_on",    "Ignition",  ""),
-        ("resolve_system_on",      "System",    ""),
-        ("resolve_regen_strength", "Regen Str", ""),
-        ("resolve_soc_percent",    "RSolve SOC", "%"),
+        ("resolve_gear",           "Gear",       "",   "539"),
+        ("resolve_ignition_on",    "Ignition",   "",   "539"),
+        ("resolve_system_on",      "System",     "",   "539"),
+        ("resolve_regen_strength", "Regen Str",  "",   "539"),
+        ("resolve_soc_percent",    "RSolve SOC", "%",  "539"),
     ]),
     ("BODY", [
-        ("key_on",          "Key On",    ""),
-        ("brake",           "Brake",     ""),
-        ("regen",           "Regen",     ""),
-        ("reverse",         "Reverse",   ""),
-        ("left_turn",       "Left Turn", ""),
-        ("body_speed_mph",  "Speed",     "mph"),
-        ("body_gear",       "Gear",      ""),
-        ("odometer_miles",  "Odometer",  "mi"),
+        ("key_on",          "Key On",    "",    "710"),
+        ("brake",           "Brake",     "",    "710"),
+        ("regen",           "Regen",     "",    "710"),
+        ("reverse",         "Reverse",   "",    "710"),
+        ("left_turn",       "Left Turn", "",    "710"),
+        ("body_speed_mph",  "Speed",     "mph", "711"),
+        ("body_gear",       "Gear",      "",    "712"),
+        ("odometer_miles",  "Odometer",  "mi",  "713"),
     ]),
     ("GPS", [
-        ("gps_speed_mph",      "GPS Speed",  "mph"),
-        ("gps_latitude",       "Latitude",   "\u00b0"),
-        ("gps_longitude",      "Longitude",  "\u00b0"),
-        ("gps_elevation_m",    "Elevation",  "m"),
-        ("gps_time_utc_s",     "Time UTC",   "s"),
-        ("ambient_light_name", "Ambient",    ""),
+        ("gps_speed_mph",      "GPS Speed",  "mph", "720"),
+        ("gps_latitude",       "Latitude",   "\u00b0",   "723"),
+        ("gps_longitude",      "Longitude",  "\u00b0",   "724"),
+        ("gps_elevation_m",    "Elevation",  "m",   "725"),
+        ("gps_time_utc_s",     "Time UTC",   "s",   "721"),
+        ("ambient_light_name", "Ambient",    "",    "726"),
     ]),
 ]
 
+# Left: LEAF MOTOR, BATTERY, CHARGER, TEMPS, VCM  (indices 0-4)
+# Right: RESOLVE, BODY, GPS                        (indices 5-7)
+LEFT_GROUPS = [0, 1, 2, 3, 4]
+RIGHT_GROUPS = [5, 6, 7]
+
 
 class DiagnosticsContext(Context):
-    ROW_H = 20
-    FONT_SZ = 13
+    ROW_H = 18
+    FONT_SZ = 12
     HDR_FONT_SZ = 11
     TITLE_FONT_SZ = 18
     GRID_TOP = 70
     GRID_BOT_MARGIN = 80      # reserved at bottom for heartbeat bar
+    PAD = 4                   # padding inside group borders
+    COL_GAP = 16              # gap between left and right columns
+    GROUP_GAP = 4             # vertical gap between group boxes
 
     def __init__(self):
-        self._scroll_y = 0.0
-        self._max_scroll = 0.0
         self._previous_context = "diagnostics"
         self._source_label = "synthetic"
 
@@ -87,14 +93,6 @@ class DiagnosticsContext(Context):
 
         cx, cy = width / 2, height / 2
         radius = min(width, height) / 2
-        grid_bottom = height - self.GRID_BOT_MARGIN
-        visible_h = grid_bottom - self.GRID_TOP
-
-        # Count rows for scroll bounds
-        total_rows = sum(1 + len(sigs) for _, sigs in SIGNAL_GROUPS)
-        total_h = total_rows * self.ROW_H
-        self._max_scroll = max(0.0, total_h - visible_h)
-        self._scroll_y = max(0.0, min(self._scroll_y, self._max_scroll))
 
         # ── Title ────────────────────────────────────────────────────
         select_sans(ctx, self.TITLE_FONT_SZ, bold=True)
@@ -110,38 +108,29 @@ class DiagnosticsContext(Context):
         ctx.move_to(cx - ext.width / 2, 65)
         ctx.show_text(self._source_label)
 
-        # ── Grid (clipped to visible area) ───────────────────────────
-        ctx.save()
-        ctx.rectangle(0, self.GRID_TOP, width, visible_h)
-        ctx.clip()
+        # ── Column geometry ──────────────────────────────────────────
+        grid_mid_y = (self.GRID_TOP + height - self.GRID_BOT_MARGIN) / 2
+        hw = chord_half_width(grid_mid_y, cy, radius)
+        usable_w = 2 * hw - 40        # 20 px inset each side
+        col_w = (usable_w - self.COL_GAP) / 2
+        left_x = cx - hw + 20
+        right_x = left_x + col_w + self.COL_GAP
 
-        y = self.GRID_TOP - self._scroll_y
-        for group_name, sigs in SIGNAL_GROUPS:
-            # Group header
-            if self.GRID_TOP - self.ROW_H < y < grid_bottom + self.ROW_H:
-                self._draw_group_header(ctx, group_name, y, cx, radius)
-            y += self.ROW_H
-
-            for sig_key, sig_label, sig_unit in sigs:
-                if self.GRID_TOP - self.ROW_H < y < grid_bottom + self.ROW_H:
-                    sv = signals.get(sig_key)
-                    self._draw_signal_row(ctx, sig_label, sig_unit, sv, y, cx, radius)
-                y += self.ROW_H
-
-        ctx.restore()
+        # ── Draw two columns ─────────────────────────────────────────
+        self._draw_column(ctx, signals, LEFT_GROUPS, left_x, col_w)
+        self._draw_column(ctx, signals, RIGHT_GROUPS, right_x, col_w)
 
         # ── Heartbeat bar ────────────────────────────────────────────
         self._draw_heartbeat_bar(ctx, heartbeats, width, height, cx, radius)
 
     def on_enter(self, state):
-        self._scroll_y = 0.0
+        pass  # no scroll state to reset
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
         return self._previous_context
 
     def on_scroll(self, dy: int):
-        self._scroll_y -= dy * self.ROW_H * 3
-        self._scroll_y = max(0.0, min(self._scroll_y, self._max_scroll))
+        pass  # no scrolling in two-column layout
 
     def set_previous_context(self, name: str):
         self._previous_context = name
@@ -151,26 +140,36 @@ class DiagnosticsContext(Context):
 
     # ── Drawing helpers ──────────────────────────────────────────────
 
-    def _draw_group_header(self, ctx, name, y, cx, radius):
-        row_cy = y + self.ROW_H / 2
-        hw = chord_half_width(row_cy, cx, radius)
-        if hw < 30:
-            return
-        left = cx - hw + 20
+    def _draw_column(self, ctx, signals, group_indices, col_x, col_w):
+        y = self.GRID_TOP
+        for gi in group_indices:
+            group_name, sigs = SIGNAL_GROUPS[gi]
+            num_rows = 1 + len(sigs)  # header row + signal rows
+            box_h = num_rows * self.ROW_H + 2 * self.PAD
 
-        select_mono(ctx, self.HDR_FONT_SZ, bold=True)
-        ctx.set_source_rgba(*GROUP_HEADER)
-        ctx.move_to(left, y + self.ROW_H - 5)
-        ctx.show_text(f"\u2500\u2500 {name} \u2500\u2500")
+            # Group border
+            ctx.set_source_rgba(*TEXT_DIM)
+            ctx.set_line_width(1)
+            ctx.rectangle(col_x, y, col_w, box_h)
+            ctx.stroke()
 
-    def _draw_signal_row(self, ctx, label, unit, sv, y, cx, radius):
-        row_cy = y + self.ROW_H / 2
-        hw = chord_half_width(row_cy, cx, radius)
-        if hw < 40:
-            return
-        right = cx + hw - 12
-        gap = 6  # px between label and value at center line
+            # Group header (spans border width)
+            select_mono(ctx, self.HDR_FONT_SZ, bold=True)
+            ctx.set_source_rgba(*GROUP_HEADER)
+            ctx.move_to(col_x + self.PAD + 2, y + self.PAD + self.ROW_H - 4)
+            ctx.show_text(group_name)
 
+            # Signal rows
+            row_y = y + self.PAD + self.ROW_H
+            for sig_key, sig_label, sig_unit, can_id in sigs:
+                sv = signals.get(sig_key)
+                self._draw_signal_row(ctx, can_id, sig_label, sig_unit, sv,
+                                      row_y, col_x, col_w)
+                row_y += self.ROW_H
+
+            y += box_h + self.GROUP_GAP
+
+    def _draw_signal_row(self, ctx, can_id, label, unit, sv, y, col_x, col_w):
         if sv is None:
             age = float("inf")
             value_str = "---"
@@ -179,26 +178,35 @@ class DiagnosticsContext(Context):
             value_str = self._format_value(sv.value, unit)
 
         color = freshness_color(age)
+        age_str = f"{int(age)}s" if age < 999 else "---"
+        text_y = y + self.ROW_H - 4
+        lx = col_x + self.PAD + 2  # inner left edge
 
-        # Label — right-aligned to center
         select_mono(ctx, self.FONT_SZ)
-        ctx.set_source_rgba(*TEXT_LABEL)
-        ext = ctx.text_extents(label)
-        ctx.move_to(cx - gap - ext.width, y + self.ROW_H - 5)
-        ctx.show_text(label)
 
-        # Value — left-aligned from center
+        # CAN ID — left-aligned
+        ctx.set_source_rgba(*TEXT_DIM)
+        ctx.move_to(lx, text_y)
+        ctx.show_text(can_id)
+
+        # Age — right-aligned in slot
+        age_right = lx + 72
+        ctx.set_source_rgba(*TEXT_DIM)
+        ext = ctx.text_extents(age_str)
+        ctx.move_to(age_right - ext.width, text_y)
+        ctx.show_text(age_str)
+
+        # Value — right-aligned in slot, freshness-colored
+        val_right = lx + 180
         ctx.set_source_rgba(*color)
-        ctx.move_to(cx + gap, y + self.ROW_H - 5)
+        ext = ctx.text_extents(value_str)
+        ctx.move_to(val_right - ext.width, text_y)
         ctx.show_text(value_str)
 
-        # Age — right-aligned to chord edge
-        age_str = f"{age:.1f}s" if age < 999 else "never"
-        ctx.set_source_rgba(*TEXT_DIM)
-        select_mono(ctx, 11)
-        ext = ctx.text_extents(age_str)
-        ctx.move_to(right - ext.width, y + self.ROW_H - 5)
-        ctx.show_text(age_str)
+        # Label — left-aligned after value slot
+        ctx.set_source_rgba(*TEXT_LABEL)
+        ctx.move_to(lx + 186, text_y)
+        ctx.show_text(label)
 
     def _draw_heartbeat_bar(self, ctx, heartbeats, width, height, cx, radius):
         bar_y = height - 60
@@ -207,7 +215,6 @@ class DiagnosticsContext(Context):
         total_w = len(roles) * slot_w
         start_x = cx - total_w / 2
 
-        # Background band
         select_mono(ctx, 10, bold=True)
         for i, role in enumerate(roles):
             x = start_x + i * slot_w
@@ -227,13 +234,11 @@ class DiagnosticsContext(Context):
     @staticmethod
     def _format_value(value, unit: str) -> str:
         if isinstance(value, bool):
-            text = "ON" if value else "OFF"
-        elif isinstance(value, float):
-            text = f"{value:.1f}"
-        elif isinstance(value, int):
-            text = str(value)
-        else:
-            text = str(value)
-        if unit:
-            text += f" {unit}"
-        return text
+            return "ON" if value else "OFF"
+        if isinstance(value, float):
+            if unit == "\u00b0F":
+                value = value * 9 / 5 + 32
+            return f"{value:.1f}"
+        if isinstance(value, int):
+            return str(value)
+        return str(value)
