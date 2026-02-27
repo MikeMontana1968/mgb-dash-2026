@@ -14,14 +14,14 @@ from rendering.fonts import select_sans, select_mono
 from rendering.cairo_helpers import draw_arc_gauge, draw_arc_fill, draw_text_centered
 
 # Arc geometry (800x800, center 400,400)
-_START_ANGLE = 8 * math.pi / 9     # 160deg — ~7:20 clock position
-_SWEEP       = 11 * math.pi / 9    # 220deg
+_START_ANGLE = 5 * math.pi / 6     # 150deg — 8 o'clock position
+_SWEEP       = 4 * math.pi / 3     # 240deg — clockwise to 4 o'clock
 
-# Radius bands (inner_r, outer_r) — 35px each, no gaps, outer→inner
-_RPM_BAND   = (350, 385)   # outermost
-_SPEED_BAND = (315, 350)
-_RANGE_BAND = (280, 315)
-_AMPS_BAND  = (245, 280)   # innermost
+# Radius bands (inner_r, outer_r) — 55px each, no gaps, outer→inner
+_RPM_BAND   = (335, 390)   # outermost
+_SPEED_BAND = (280, 335)
+_RANGE_BAND = (225, 280)
+_AMPS_BAND  = (170, 225)   # innermost
 
 # Scales
 _RPM_MAX   = 10000.0  # Leaf motor max RPM
@@ -44,8 +44,9 @@ _RANGE_WINDOW_HALF = 8.0    # miles — fixed default uncertainty band
 class DrivingContext(Context):
     """Four concentric arc gauges: RPM, speed, range, amps.
 
-    Range arc shows a three-shade uncertainty window around the current
-    estimate.  Bottom 140deg gap displays alert text.
+    Arcs sweep 240deg from 8 o'clock to 4 o'clock (120deg bottom gap).
+    Range arc shows a three-shade uncertainty window.
+    Alerts are displayed centered inside the arcs.
     Tap anywhere toggles to diagnostics.
     """
 
@@ -128,23 +129,12 @@ class DrivingContext(Context):
         self._draw_arc_value(ctx, cx, cy, _AMPS_BAND, amps_ratio,
                              f"{abs(amps):.0f}")
 
-        # ── Center info ───────────────────────────────────────────────
-        select_sans(ctx, 64, bold=True)
-        ctx.set_source_rgba(*TEXT_WHITE)
-        draw_text_centered(ctx, f"{speed:.0f}", cx, cy - 20)
-
-        select_sans(ctx, 18)
-        ctx.set_source_rgba(*TEXT_DIM)
-        draw_text_centered(ctx, "MPH", cx, cy + 15)
-
-        select_mono(ctx, 16)
-        ctx.set_source_rgba(*TEXT_DIM)
-        draw_text_centered(ctx, f"SOC {soc:.0f}%", cx, cy + 45)
-
-        # ── Alerts in bottom gap ──────────────────────────────────────
+        # ── Alerts (centered) ────────────────────────────────────────
         if state.alert_manager:
             alerts = state.alert_manager.get_display_alerts()
-            draw_alerts(ctx, alerts, cx, cy + 300)
+            # Stack alerts around center, offset upward so they feel centered
+            alert_base_y = cy - (len(alerts) - 1) * 10.0
+            draw_alerts(ctx, alerts, cx, alert_base_y)
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
         return "diagnostics"
