@@ -241,6 +241,10 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 **Components:**
 
+Prototype Screens
+
+<img src="docs/images/context-charging.png" alt="Body controller" width="300"><img src="docs/images/context-driving.png" alt="Body controller" width="300"><img src="docs/images/context-diagnostics.png" alt="Body controller" width="300">
+
 | Component | Part / Model | Interface | Pi Connection | Notes |
 |-----------|-------------|-----------|---------------|-------|
 | SBC | Raspberry Pi 4B (4GB+) | — | — | 64-bit Pi OS required for PySide6 |
