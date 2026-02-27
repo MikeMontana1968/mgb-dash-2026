@@ -40,7 +40,7 @@ def main():
     )
     parser.add_argument("--file", help="Replay log file path")
     parser.add_argument(
-        "--context", default="startup",
+        "--context", default="diagnostics",
         help="Initial display context"
     )
     parser.add_argument("--width", type=int, default=800)

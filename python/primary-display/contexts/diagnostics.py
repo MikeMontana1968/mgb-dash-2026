@@ -137,10 +137,7 @@ class DiagnosticsContext(Context):
         self._scroll_y = 0.0
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
-        # Tap in the title area exits diagnostics
-        if y < self.GRID_TOP:
-            return self._previous_context
-        return None
+        return self._previous_context
 
     def on_scroll(self, dy: int):
         self._scroll_y -= dy * self.ROW_H * 3
@@ -171,8 +168,8 @@ class DiagnosticsContext(Context):
         hw = chord_half_width(row_cy, cx, radius)
         if hw < 40:
             return
-        left = cx - hw + 12
         right = cx + hw - 12
+        gap = 6  # px between label and value at center line
 
         if sv is None:
             age = float("inf")
@@ -183,26 +180,21 @@ class DiagnosticsContext(Context):
 
         color = freshness_color(age)
 
-        # Freshness bar
-        ctx.set_source_rgba(*color)
-        ctx.rectangle(left, y + 2, 4, self.ROW_H - 4)
-        ctx.fill()
-
-        # Label
+        # Label — right-aligned to center
         select_mono(ctx, self.FONT_SZ)
         ctx.set_source_rgba(*TEXT_LABEL)
-        ctx.move_to(left + 12, y + self.ROW_H - 5)
+        ext = ctx.text_extents(label)
+        ctx.move_to(cx - gap - ext.width, y + self.ROW_H - 5)
         ctx.show_text(label)
 
-        # Value
+        # Value — left-aligned from center
         ctx.set_source_rgba(*color)
-        ctx.move_to(left + 170, y + self.ROW_H - 5)
+        ctx.move_to(cx + gap, y + self.ROW_H - 5)
         ctx.show_text(value_str)
 
-        # Age
+        # Age — right-aligned to chord edge
         age_str = f"{age:.1f}s" if age < 999 else "never"
         ctx.set_source_rgba(*TEXT_DIM)
-        # Right-align age
         select_mono(ctx, 11)
         ext = ctx.text_extents(age_str)
         ctx.move_to(right - ext.width, y + self.ROW_H - 5)
