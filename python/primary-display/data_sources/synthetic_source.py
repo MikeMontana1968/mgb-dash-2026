@@ -53,12 +53,12 @@ class SyntheticSource(DataSource):
         self._emit_leaf_motor(t)
         self._emit_leaf_battery(t)
         self._emit_leaf_charger(t, charging=True)
-        self._emit_leaf_temps(t)
+        self._emit_leaf_temps(t, alert_cycle=True)
         self._emit_leaf_vcm()
         self._emit_resolve(t)
         self._emit_body(t, speed_mph=30 + 15 * math.sin(t * 0.2))
         self._emit_gps(t)
-        self._emit_heartbeats(t)
+        self._emit_heartbeats(t, drop_one=True)
 
     def _gen_idle(self, t):
         self._emit_leaf_battery(t)
@@ -117,11 +117,17 @@ class SyntheticSource(DataSource):
         self._state.update_signals({"charge_power_kw": round(power, 2)})
         self._state.update_raw(0x1DC, b"\x00" * 8)
 
-    def _emit_leaf_temps(self, t):
+    def _emit_leaf_temps(self, t, alert_cycle: bool = False):
+        # Periodically spike battery temp above 45C to trigger BATT TEMP HIGH alert
+        if alert_cycle and 30 < (t % 60) < 40:
+            batt_temp = 48.0
+        else:
+            batt_temp = round(28 + 3 * math.sin(t * 0.02), 1)
         self._state.update_signals({
             "motor_temp_c":    round(45 + 10 * math.sin(t * 0.03), 1),
             "igbt_temp_c":     round(42 + 8 * math.sin(t * 0.025), 1),
             "inverter_temp_c": round(38 + 6 * math.sin(t * 0.02), 1),
+            "battery_temp_c":  batt_temp,
         })
         self._state.update_raw(0x55A, b"\x00" * 8)
 
@@ -189,9 +195,12 @@ class SyntheticSource(DataSource):
         for aid in range(0x720, 0x728):
             self._state.update_raw(aid, b"\x00" * 8)
 
-    def _emit_heartbeats(self, t):
+    def _emit_heartbeats(self, t, drop_one: bool = False):
         counter = int(t) % 256
         for role_bytes in can_ids.ALL_ROLES:
             role = role_bytes.decode("ascii").strip()
+            # Periodically stop updating GPS heartbeat to trigger HEARTBEAT LOST
+            if drop_one and role == "GPS" and 45 < (t % 90) < 65:
+                continue
             self._state.update_heartbeat(role, counter, 0)
         self._state.update_raw(0x700, b"\x00" * 8)

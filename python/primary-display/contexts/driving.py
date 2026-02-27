@@ -4,7 +4,7 @@ import math
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator
+from .alerts import AlertEvaluator, draw_alert
 from rendering.colors import (
     ARC_SPEED, ARC_AMPS_DISCHARGE, ARC_AMPS_REGEN, ARC_RANGE,
     ARC_TRACK, TEXT_WHITE, TEXT_DIM,
@@ -16,10 +16,10 @@ from rendering.cairo_helpers import draw_arc_gauge, draw_text_centered
 _START_ANGLE = 8 * math.pi / 9     # 160deg — ~7:20 clock position
 _SWEEP       = 11 * math.pi / 9    # 220deg
 
-# Radius bands (inner_r, outer_r)
+# Radius bands (inner_r, outer_r) — no gaps between arcs
 _SPEED_BAND = (340, 385)   # outer
-_AMPS_BAND  = (285, 330)   # middle
-_RANGE_BAND = (230, 275)   # inner
+_AMPS_BAND  = (295, 340)   # middle (flush against speed)
+_RANGE_BAND = (250, 295)   # inner (flush against amps)
 
 # Scales
 _SPEED_MAX = 100.0   # mph
@@ -69,19 +69,19 @@ class DrivingContext(Context):
         draw_arc_gauge(ctx, cx, cy, *_RANGE_BAND, _START_ANGLE, _SWEEP,
                        range_ratio, ARC_RANGE, ARC_TRACK)
 
-        # ── Labels at arc start (left side) ───────────────────────────
-        self._draw_arc_label(ctx, cx, cy, _SPEED_BAND, "mph", ARC_SPEED)
-        self._draw_arc_label(ctx, cx, cy, _AMPS_BAND, "amps", amps_color)
-        self._draw_arc_label(ctx, cx, cy, _RANGE_BAND, "range", ARC_RANGE)
+        # ── Labels at arc start (left side) — white text ─────────────
+        self._draw_arc_label(ctx, cx, cy, _SPEED_BAND, "mph")
+        self._draw_arc_label(ctx, cx, cy, _AMPS_BAND, "amps")
+        self._draw_arc_label(ctx, cx, cy, _RANGE_BAND, "range")
 
-        # ── Values at arc tip ─────────────────────────────────────────
+        # ── Values at arc tip — white text ───────────────────────────
         self._draw_arc_value(ctx, cx, cy, _SPEED_BAND, speed_ratio,
-                             f"{speed:.0f}", ARC_SPEED)
+                             f"{speed:.0f}")
         amps_str = f"{abs(amps):.0f}"
         self._draw_arc_value(ctx, cx, cy, _AMPS_BAND, amps_ratio,
-                             amps_str, amps_color)
+                             amps_str)
         self._draw_arc_value(ctx, cx, cy, _RANGE_BAND, range_ratio,
-                             f"{est_range:.0f}", ARC_RANGE)
+                             f"{est_range:.0f}")
 
         # ── Center info ───────────────────────────────────────────────
         select_sans(ctx, 64, bold=True)
@@ -99,39 +99,35 @@ class DrivingContext(Context):
         # ── Alerts in bottom gap ──────────────────────────────────────
         active_alerts = self._alerts.get_active_alerts(state)
         if active_alerts:
-            alert = active_alerts[0]  # show highest priority
-            select_sans(ctx, 16, bold=True)
-            ctx.set_source_rgba(*alert.color)
-            draw_text_centered(ctx, alert.message, cx, cy + 340)
+            draw_alert(ctx, active_alerts[0], cx, cy + 340)
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
         return "diagnostics"
 
     # ── Helpers ────────────────────────────────────────────────────────
 
-    def _draw_arc_label(self, ctx, cx, cy, band, text, color):
-        """Draw label near the start of an arc (left side)."""
+    def _draw_arc_label(self, ctx, cx, cy, band, text):
+        """Draw white label near the start of an arc (left side)."""
         mid_r = (band[0] + band[1]) / 2
-        # Position just past the start angle, offset outward for readability
         angle = _START_ANGLE - 0.06
         lx = cx + mid_r * math.cos(angle)
         ly = cy + mid_r * math.sin(angle)
 
         select_mono(ctx, 11)
-        ctx.set_source_rgba(*color)
+        ctx.set_source_rgba(*TEXT_WHITE)
         ext = ctx.text_extents(text)
         ctx.move_to(lx - ext.width / 2, ly + ext.height / 2)
         ctx.show_text(text)
 
-    def _draw_arc_value(self, ctx, cx, cy, band, fill_ratio, text, color):
-        """Draw value at the tip of the filled arc."""
+    def _draw_arc_value(self, ctx, cx, cy, band, fill_ratio, text):
+        """Draw white value at the tip of the filled arc."""
         mid_r = (band[0] + band[1]) / 2
         tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05)
         vx = cx + mid_r * math.cos(tip_angle)
         vy = cy + mid_r * math.sin(tip_angle)
 
         select_sans(ctx, 16, bold=True)
-        ctx.set_source_rgba(*color)
+        ctx.set_source_rgba(*TEXT_WHITE)
         ext = ctx.text_extents(text)
         ctx.move_to(vx - ext.width / 2, vy + ext.height / 2)
         ctx.show_text(text)

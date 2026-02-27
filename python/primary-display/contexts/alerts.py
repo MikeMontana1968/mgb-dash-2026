@@ -5,6 +5,13 @@ from dataclasses import dataclass
 from typing import List
 
 from rendering.colors import ALERT_RED, ALERT_YELLOW, ALERT_CYAN
+from rendering.fonts import select_sans
+from rendering.cairo_helpers import draw_text_centered
+
+# Severity icons (Unicode symbols)
+ICON_RED    = "\u2716"   # heavy X
+ICON_YELLOW = "\u26a0"   # warning triangle
+ICON_CYAN   = "\u2139"   # info circle
 
 
 @dataclass
@@ -12,6 +19,7 @@ class Alert:
     """A single active alert."""
     message: str
     color: tuple          # RGBA
+    icon: str             # Unicode severity icon
     first_seen: float     # monotonic timestamp
 
     @property
@@ -19,7 +27,7 @@ class Alert:
         return time.monotonic() - self.first_seen
 
 
-# (check_fn, message, color) — check_fn receives signals dict + heartbeats dict
+# (check_fn, message, color, icon) — check_fn receives signals dict + heartbeats dict
 _ALERT_DEFS = [
     (
         lambda s, h: any(
@@ -28,6 +36,7 @@ _ALERT_DEFS = [
         ),
         "HEARTBEAT LOST",
         ALERT_YELLOW,
+        ICON_YELLOW,
     ),
     (
         lambda s, h: (
@@ -36,6 +45,7 @@ _ALERT_DEFS = [
         ),
         "BATT TEMP HIGH",
         ALERT_RED,
+        ICON_RED,
     ),
     (
         lambda s, h: (
@@ -44,6 +54,7 @@ _ALERT_DEFS = [
         ),
         "MOTOR TEMP HIGH",
         ALERT_RED,
+        ICON_RED,
     ),
     (
         lambda s, h: (
@@ -52,6 +63,7 @@ _ALERT_DEFS = [
         ),
         "NO GPS FIX",
         ALERT_CYAN,
+        ICON_CYAN,
     ),
 ]
 
@@ -68,7 +80,6 @@ class AlertEvaluator:
     """
 
     def __init__(self):
-        # Track first_seen per alert message for fade timing
         self._first_seen: dict[str, float] = {}
 
     def get_active_alerts(self, state) -> List[Alert]:
@@ -80,7 +91,7 @@ class AlertEvaluator:
         active = []
         seen_keys = set()
 
-        for check_fn, message, color in _ALERT_DEFS:
+        for check_fn, message, color, icon in _ALERT_DEFS:
             try:
                 if check_fn(signals, heartbeats):
                     seen_keys.add(message)
@@ -89,6 +100,7 @@ class AlertEvaluator:
                     alert = Alert(
                         message=message,
                         color=color,
+                        icon=icon,
                         first_seen=self._first_seen[message],
                     )
                     # Fade after _FADE_AGE
@@ -105,3 +117,11 @@ class AlertEvaluator:
                 del self._first_seen[key]
 
         return active
+
+
+def draw_alert(ctx, alert: Alert, cx: float, cy: float):
+    """Draw an alert with severity icon + colored text."""
+    text = f"{alert.icon}  {alert.message}"
+    select_sans(ctx, 16, bold=True)
+    ctx.set_source_rgba(*alert.color)
+    draw_text_centered(ctx, text, cx, cy)

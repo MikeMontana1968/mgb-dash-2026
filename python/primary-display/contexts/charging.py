@@ -4,7 +4,7 @@ import math
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator
+from .alerts import AlertEvaluator, draw_alert
 from rendering.colors import ARC_RANGE, ARC_TRACK, TEXT_WHITE, TEXT_DIM, ALERT_CYAN
 from rendering.fonts import select_sans, select_mono
 from rendering.cairo_helpers import draw_arc_gauge, draw_text_centered
@@ -76,10 +76,7 @@ class ChargingContext(Context):
         # ── Alerts ────────────────────────────────────────────────────
         active_alerts = self._alerts.get_active_alerts(state)
         if active_alerts:
-            alert = active_alerts[0]
-            select_sans(ctx, 16, bold=True)
-            ctx.set_source_rgba(*alert.color)
-            draw_text_centered(ctx, alert.message, cx, cy + 340)
+            draw_alert(ctx, active_alerts[0], cx, cy + 340)
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
         return "diagnostics"

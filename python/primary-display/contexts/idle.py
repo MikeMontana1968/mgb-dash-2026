@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator
+from .alerts import AlertEvaluator, draw_alert
 from rendering.colors import TEXT_WHITE, TEXT_DIM, ARC_RANGE
 from rendering.fonts import select_sans, select_mono
 from rendering.cairo_helpers import draw_text_centered
@@ -64,10 +64,7 @@ class IdleContext(Context):
         # ── Alerts ────────────────────────────────────────────────────
         active_alerts = self._alerts.get_active_alerts(state)
         if active_alerts:
-            alert = active_alerts[0]
-            select_sans(ctx, 16, bold=True)
-            ctx.set_source_rgba(*alert.color)
-            draw_text_centered(ctx, alert.message, cx, cy + 340)
+            draw_alert(ctx, active_alerts[0], cx, cy + 340)
 
     def on_enter(self, state):
         if self._key_on_time is None:
