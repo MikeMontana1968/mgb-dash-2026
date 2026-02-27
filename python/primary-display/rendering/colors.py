@@ -19,6 +19,7 @@ TEXT_LABEL = (0.70, 0.70, 0.75, 1.0)
 GROUP_HEADER = (0.40, 0.50, 0.70, 1.0)
 
 # Arc gauge fills
+ARC_RPM            = (0.40, 0.65, 0.85, 1.0)   # steel blue
 ARC_SPEED          = (0.80, 0.41, 0.20, 1.0)   # orange/copper
 ARC_AMPS_DISCHARGE = (0.70, 0.12, 0.12, 1.0)   # dark red (discharging)
 ARC_AMPS_REGEN     = (0.20, 0.75, 0.30, 1.0)   # green (regenerating)
