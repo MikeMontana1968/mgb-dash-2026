@@ -3,6 +3,7 @@
 import os
 import sys
 import math
+import signal
 import logging
 from datetime import datetime
 
@@ -56,6 +57,19 @@ class DisplayEngine:
         clock = pygame.time.Clock()
 
         self._running = True
+        self._screen = screen
+
+        # SIGUSR1 → save screenshot (Linux only)
+        if hasattr(signal, "SIGUSR1"):
+            def _screenshot_handler(signum, frame):
+                path = "/tmp/mgb-screenshot.png"
+                try:
+                    pygame.image.save(self._screen, path)
+                    logger.info("Screenshot saved to %s", path)
+                except Exception as exc:
+                    logger.error("Screenshot failed: %s", exc)
+            signal.signal(signal.SIGUSR1, _screenshot_handler)
+
         logger.info("Display engine started (%dx%d)", self._width, self._height)
 
         try:
