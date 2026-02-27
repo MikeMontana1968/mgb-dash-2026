@@ -148,24 +148,24 @@ class DrivingContext(Context):
         lx = cx + mid_r * math.cos(angle)
         ly = cy + mid_r * math.sin(angle)
 
-        select_mono(ctx, 11)
+        select_mono(ctx, 13)
         ctx.set_source_rgba(*TEXT_WHITE)
         ext = ctx.text_extents(text)
         ctx.move_to(lx - ext.width / 2, ly + ext.height / 2)
         ctx.show_text(text)
 
     def _draw_arc_value(self, ctx, cx, cy, band, fill_ratio, text):
-        """Draw white value centered in the arc band, fully on the gray track past the fill."""
+        """Draw black value centered in the arc band, inside the colored fill."""
         mid_r = (band[0] + band[1]) / 2
-        select_sans(ctx, 16, bold=True)
+        select_sans(ctx, 18, bold=True)
         ext = ctx.text_extents(text)
-        # Offset the text center past the fill edge by half the text width + 10px gap
+        # Place text center inside the fill, pulled back from the tip edge
         gap_px = ext.width / 2 + 10.0
-        angle_offset = gap_px / mid_r  # convert px to radians at this radius
-        tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05) + angle_offset
+        angle_offset = gap_px / mid_r
+        tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05) - angle_offset
         vx = cx + mid_r * math.cos(tip_angle)
         vy = cy + mid_r * math.sin(tip_angle)
 
-        ctx.set_source_rgba(*TEXT_WHITE)
+        ctx.set_source_rgba(0.0, 0.0, 0.0, 1.0)
         ctx.move_to(vx - ext.width / 2, vy + ext.height / 2)
         ctx.show_text(text)

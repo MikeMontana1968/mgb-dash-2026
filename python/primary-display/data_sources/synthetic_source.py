@@ -264,3 +264,11 @@ class SyntheticSource(DataSource):
         if tick % 400 == 30:
             mgr.push(LogRole.BODY, LogLevel.LOG_CRITICAL,
                      LogEvent.BUS_OFF, "CAN bus off")
+
+        # Every ~12s: alternating upshift / downshift advice
+        if tick % 120 == 50:
+            mgr.push(LogRole.DASH, LogLevel.LOG_INFO,
+                     LogEvent.GENERIC_INFO, "Upshift to gear 3")
+        if tick % 120 == 110:
+            mgr.push(LogRole.DASH, LogLevel.LOG_INFO,
+                     LogEvent.GENERIC_INFO, "Downshift to gear 2")
