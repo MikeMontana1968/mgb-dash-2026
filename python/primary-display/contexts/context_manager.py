@@ -13,7 +13,8 @@ class ContextManager:
     def __init__(self, contexts: dict, initial: str = "diagnostics"):
         self._contexts = contexts
         self._active_name = initial
-        self._previous_name = initial
+        # Avoid _previous == _active (toggle_diagnostics would be a no-op)
+        self._previous_name = "idle" if initial == "diagnostics" else initial
         # Transition timers: key → monotonic time when condition first became true
         self._timers: dict[str, float] = {}
         if initial in self._contexts:
