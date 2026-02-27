@@ -64,14 +64,16 @@ echo "[6/6] Creating systemd service for primary display..."
 cat > /etc/systemd/system/mgb-primary-display.service <<EOF
 [Unit]
 Description=MGB Dash — Primary Display (pycairo + pygame)
-After=network.target
+After=network.target graphical-session.target
+Wants=graphical-session.target
 
 [Service]
 WorkingDirectory=$REPO_DIR/python/primary-display
 ExecStart=$REPO_DIR/.venv/bin/python -u main.py --source can
 Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 Restart=always
-RestartSec=120
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
 User=pi

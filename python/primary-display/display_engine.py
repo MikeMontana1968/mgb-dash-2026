@@ -31,15 +31,16 @@ class DisplayEngine:
 
     def run(self):
         is_linux = sys.platform != "win32"
+        headless = is_linux and not os.environ.get("DISPLAY")
 
         # Platform-specific SDL setup
-        if is_linux and not os.environ.get("DISPLAY"):
+        if headless:
             os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
 
         pygame.init()
 
-        # Always fullscreen on Linux (kmsdrm or Xwayland)
-        flags = pygame.FULLSCREEN if is_linux else 0
+        # Fullscreen on Linux: always (kmsdrm needs it, Xwayland needs it for focus)
+        flags = pygame.FULLSCREEN | pygame.NOFRAME if is_linux else 0
 
         try:
             screen = pygame.display.set_mode((self._width, self._height), flags)
