@@ -22,7 +22,9 @@ GROUP_HEADER = (0.40, 0.50, 0.70, 1.0)
 ARC_SPEED          = (0.80, 0.41, 0.20, 1.0)   # orange/copper
 ARC_AMPS_DISCHARGE = (0.70, 0.12, 0.12, 1.0)   # dark red (discharging)
 ARC_AMPS_REGEN     = (0.20, 0.75, 0.30, 1.0)   # green (regenerating)
-ARC_RANGE          = (0.27, 0.80, 0.40, 1.0)   # green
+ARC_RANGE          = (0.27, 0.80, 0.40, 1.0)   # green (current estimate)
+ARC_RANGE_OPTIMIST = (0.35, 0.90, 0.50, 1.0)   # bright green (best case)
+ARC_RANGE_PESSIMIST= (0.15, 0.55, 0.25, 1.0)   # dark green (worst case)
 ARC_TRACK          = (0.15, 0.15, 0.15, 1.0)   # dark gray background
 
 # Alert severities
