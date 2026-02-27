@@ -7,6 +7,7 @@ import threading
 from .base import DataSource
 from vehicle_state import VehicleState
 from common.python import can_ids
+from common.python.can_log import LogLevel, LogRole, LogEvent
 
 
 class SyntheticSource(DataSource):
@@ -59,6 +60,7 @@ class SyntheticSource(DataSource):
         self._emit_body(t, speed_mph=30 + 15 * math.sin(t * 0.2))
         self._emit_gps(t)
         self._emit_heartbeats(t, drop_one=True)
+        self._emit_log_alerts(t)
 
     def _gen_idle(self, t):
         self._emit_leaf_battery(t)
@@ -204,3 +206,30 @@ class SyntheticSource(DataSource):
                 continue
             self._state.update_heartbeat(role, counter, 0)
         self._state.update_raw(0x700, b"\x00" * 8)
+
+    def _emit_log_alerts(self, t):
+        """Push synthetic CAN LOG alerts directly to the AlertManager."""
+        mgr = self._state.alert_manager
+        if mgr is None:
+            return
+        tick = int(t * 10)  # 10Hz ticks
+
+        # Every ~8s: WARN from BODY — low voltage
+        if tick % 80 == 0:
+            mgr.push(LogRole.BODY, LogLevel.LOG_WARN,
+                     LogEvent.LOW_VOLTAGE, "12V battery 11.2V")
+
+        # Every ~15s: INFO from GPS
+        if tick % 150 == 10:
+            mgr.push(LogRole.GPS, LogLevel.LOG_INFO,
+                     LogEvent.GPS_FIX_ACQUIRED, "3D fix 8 sats")
+
+        # Every ~25s: ERROR from TEMP
+        if tick % 250 == 20:
+            mgr.push(LogRole.TEMP, LogLevel.LOG_ERROR,
+                     LogEvent.OVERTEMP, "Inverter 92C")
+
+        # Every ~40s: CRITICAL from BODY
+        if tick % 400 == 30:
+            mgr.push(LogRole.BODY, LogLevel.LOG_CRITICAL,
+                     LogEvent.BUS_OFF, "CAN bus off")

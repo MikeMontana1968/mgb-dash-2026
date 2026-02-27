@@ -1,127 +1,144 @@
-"""MGB Dash 2026 — Alert evaluator for display contexts."""
+"""MGB Dash 2026 — CAN LOG alert manager for display contexts.
+
+Alerts are driven by CAN LOG (0x731) and LOG_TEXT (0x732) messages.
+Each alert is shown for DISPLAY_DURATION seconds then removed.
+Duplicate alerts (same role+event) within the storm cooldown are
+coalesced: the counter increments and the timer resets.
+
+Usage:
+    manager = AlertManager()
+    manager.push(role, level, event, text)  # called from CAN decode
+    alerts = manager.get_display_alerts()   # called from render loop
+"""
 
 import time
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 from typing import List
 
+from common.python.can_log import LogLevel, LogRole, LogEvent
 from rendering.colors import ALERT_RED, ALERT_YELLOW, ALERT_CYAN
 from rendering.fonts import select_sans
 from rendering.cairo_helpers import draw_text_centered
 
 # Severity icons (Unicode symbols)
-ICON_RED    = "\u2716"   # heavy X
-ICON_YELLOW = "\u26a0"   # warning triangle
-ICON_CYAN   = "\u2139"   # info circle
+ICON_CRITICAL = "\u2716"   # heavy X
+ICON_ERROR    = "\u2716"   # heavy X
+ICON_WARN     = "\u26a0"   # warning triangle
+ICON_INFO     = "\u2139"   # info circle
+ICON_DEBUG    = "\u00b7"   # middle dot
+
+# Level → (color, icon)
+_LEVEL_STYLE = {
+    LogLevel.LOG_CRITICAL: (ALERT_RED,    ICON_CRITICAL),
+    LogLevel.LOG_ERROR:    (ALERT_RED,    ICON_ERROR),
+    LogLevel.LOG_WARN:     (ALERT_YELLOW, ICON_WARN),
+    LogLevel.LOG_INFO:     (ALERT_CYAN,   ICON_INFO),
+    LogLevel.LOG_DEBUG:    (ALERT_CYAN,   ICON_DEBUG),
+}
+
+# Configuration
+MAX_DISPLAY    = 4      # max alerts shown at once
+DISPLAY_DURATION = 5.0  # seconds before auto-removal
+MIN_DISPLAY_LEVEL = LogLevel.LOG_INFO  # minimum level to display (configurable)
+
+# Storm triage: if the same (role, event) fires again within this window,
+# coalesce into a single alert with an incrementing count rather than
+# flooding the display.  The timer resets on each repeat so the alert
+# stays visible while the storm continues, then expires normally after
+# the last occurrence + DISPLAY_DURATION.
+STORM_COOLDOWN = 10.0   # seconds — coalesce repeats within this window
 
 
 @dataclass
 class Alert:
-    """A single active alert."""
-    message: str
-    color: tuple          # RGBA
-    icon: str             # Unicode severity icon
-    first_seen: float     # monotonic timestamp
+    """A single display alert."""
+    role: LogRole
+    level: LogLevel
+    event: LogEvent
+    text: str
+    color: tuple
+    icon: str
+    timestamp: float = field(default_factory=time.monotonic)
+    count: int = 1        # storm coalesce counter
 
     @property
     def age_seconds(self) -> float:
-        return time.monotonic() - self.first_seen
+        return time.monotonic() - self.timestamp
+
+    @property
+    def display_text(self) -> str:
+        base = self.text if self.text else self.event.name
+        if self.count > 1:
+            return f"{base} (x{self.count})"
+        return base
+
+    @property
+    def storm_key(self) -> tuple:
+        """Key for coalescing duplicate alerts."""
+        return (self.role, self.event)
 
 
-# (check_fn, message, color, icon) — check_fn receives signals dict + heartbeats dict
-_ALERT_DEFS = [
-    (
-        lambda s, h: any(
-            hb.age_seconds > 10
-            for hb in h.values()
-        ),
-        "HEARTBEAT LOST",
-        ALERT_YELLOW,
-        ICON_YELLOW,
-    ),
-    (
-        lambda s, h: (
-            "battery_temp_c" in s and
-            s["battery_temp_c"].value > 45
-        ),
-        "BATT TEMP HIGH",
-        ALERT_RED,
-        ICON_RED,
-    ),
-    (
-        lambda s, h: (
-            "motor_temp_c" in s and
-            s["motor_temp_c"].value > 120
-        ),
-        "MOTOR TEMP HIGH",
-        ALERT_RED,
-        ICON_RED,
-    ),
-    (
-        lambda s, h: (
-            "gps_latitude" not in s or
-            s["gps_latitude"].age_seconds > 30
-        ),
-        "NO GPS FIX",
-        ALERT_CYAN,
-        ICON_CYAN,
-    ),
-]
+class AlertManager:
+    """Thread-safe CAN LOG alert queue with expiry and storm triage."""
 
-# Dim alpha multiplier for alerts older than 10s
-_FADE_AGE = 10.0
+    def __init__(self, min_level: LogLevel = MIN_DISPLAY_LEVEL):
+        self._lock = threading.Lock()
+        self._alerts: list[Alert] = []
+        self.min_level = min_level
 
+    def push(self, role: LogRole, level: LogLevel, event: LogEvent,
+             text: str = ""):
+        """Add an alert from a decoded CAN LOG frame."""
+        if int(level) < int(self.min_level):
+            return
 
-class AlertEvaluator:
-    """Checks VehicleState for alert conditions.
-
-    Usage:
-        evaluator = AlertEvaluator()
-        alerts = evaluator.get_active_alerts(state)
-    """
-
-    def __init__(self):
-        self._first_seen: dict[str, float] = {}
-
-    def get_active_alerts(self, state) -> List[Alert]:
-        """Return list of currently active alerts."""
-        signals = state.get_all_signals()
-        heartbeats = state.get_heartbeats()
+        color, icon = _LEVEL_STYLE.get(level, (ALERT_CYAN, ICON_INFO))
         now = time.monotonic()
+        storm_key = (role, event)
 
-        active = []
-        seen_keys = set()
+        with self._lock:
+            # Storm triage: coalesce if same (role, event) within cooldown
+            for existing in self._alerts:
+                if (existing.storm_key == storm_key
+                        and (now - existing.timestamp) < STORM_COOLDOWN):
+                    existing.count += 1
+                    existing.timestamp = now  # reset expiry timer
+                    if text:
+                        existing.text = text  # update to latest text
+                    return
 
-        for check_fn, message, color, icon in _ALERT_DEFS:
-            try:
-                if check_fn(signals, heartbeats):
-                    seen_keys.add(message)
-                    if message not in self._first_seen:
-                        self._first_seen[message] = now
-                    alert = Alert(
-                        message=message,
-                        color=color,
-                        icon=icon,
-                        first_seen=self._first_seen[message],
-                    )
-                    # Fade after _FADE_AGE
-                    if alert.age_seconds > _FADE_AGE:
-                        r, g, b, _ = color
-                        alert.color = (r, g, b, 0.35)
-                    active.append(alert)
-            except Exception:
-                pass  # skip broken checks
+            self._alerts.append(Alert(
+                role=role,
+                level=level,
+                event=event,
+                text=text,
+                color=color,
+                icon=icon,
+                timestamp=now,
+            ))
 
-        # Clear first_seen for alerts that are no longer active
-        for key in list(self._first_seen):
-            if key not in seen_keys:
-                del self._first_seen[key]
-
-        return active
+    def get_display_alerts(self) -> List[Alert]:
+        """Return up to MAX_DISPLAY alerts, priority-sorted, expired removed."""
+        now = time.monotonic()
+        with self._lock:
+            # Remove expired
+            self._alerts = [a for a in self._alerts
+                            if (now - a.timestamp) < DISPLAY_DURATION]
+            # Sort by level descending (CRITICAL first), then by timestamp
+            sorted_alerts = sorted(
+                self._alerts,
+                key=lambda a: (-int(a.level), a.timestamp),
+            )
+            return sorted_alerts[:MAX_DISPLAY]
 
 
-def draw_alert(ctx, alert: Alert, cx: float, cy: float):
-    """Draw an alert with severity icon + colored text."""
-    text = f"{alert.icon}  {alert.message}"
-    select_sans(ctx, 16, bold=True)
-    ctx.set_source_rgba(*alert.color)
-    draw_text_centered(ctx, text, cx, cy)
+def draw_alerts(ctx, alerts: List[Alert], cx: float, base_y: float,
+                line_spacing: float = 20.0):
+    """Draw up to MAX_DISPLAY alerts as stacked lines."""
+    for i, alert in enumerate(alerts[:MAX_DISPLAY]):
+        text = f"{alert.icon}  {alert.display_text}"
+        y = base_y + i * line_spacing
+        select_sans(ctx, 14, bold=True)
+        ctx.set_source_rgba(*alert.color)
+        draw_text_centered(ctx, text, cx, y)

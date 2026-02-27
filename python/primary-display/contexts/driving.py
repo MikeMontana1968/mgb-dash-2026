@@ -4,7 +4,7 @@ import math
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator, draw_alert
+from .alerts import draw_alerts
 from rendering.colors import (
     ARC_RPM, ARC_SPEED, ARC_AMPS_DISCHARGE, ARC_AMPS_REGEN,
     ARC_RANGE, ARC_RANGE_OPTIMIST, ARC_RANGE_PESSIMIST,
@@ -50,7 +50,7 @@ class DrivingContext(Context):
     """
 
     def __init__(self):
-        self._alerts = AlertEvaluator()
+        pass
 
     def render(self, ctx, state, width, height):
         cx, cy = width / 2, height / 2
@@ -142,9 +142,9 @@ class DrivingContext(Context):
         draw_text_centered(ctx, f"SOC {soc:.0f}%", cx, cy + 45)
 
         # ── Alerts in bottom gap ──────────────────────────────────────
-        active_alerts = self._alerts.get_active_alerts(state)
-        if active_alerts:
-            draw_alert(ctx, active_alerts[0], cx, cy + 340)
+        if state.alert_manager:
+            alerts = state.alert_manager.get_display_alerts()
+            draw_alerts(ctx, alerts, cx, cy + 300)
 
     def on_touch(self, x: int, y: int) -> Optional[str]:
         return "diagnostics"
@@ -169,8 +169,8 @@ class DrivingContext(Context):
         mid_r = (band[0] + band[1]) / 2
         select_sans(ctx, 16, bold=True)
         ext = ctx.text_extents(text)
-        # Offset the text center past the fill edge by half the text width + 4px gap
-        gap_px = ext.width / 2 + 4.0
+        # Offset the text center past the fill edge by half the text width + 10px gap
+        gap_px = ext.width / 2 + 10.0
         angle_offset = gap_px / mid_r  # convert px to radians at this radius
         tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05) + angle_offset
         vx = cx + mid_r * math.cos(tip_angle)

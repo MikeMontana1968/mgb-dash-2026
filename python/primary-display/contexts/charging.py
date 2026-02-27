@@ -5,7 +5,7 @@ import time
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator, draw_alert
+from .alerts import draw_alerts
 from rendering.colors import ARC_RANGE, ARC_TRACK, TEXT_WHITE, TEXT_DIM, ALERT_CYAN
 from rendering.fonts import select_sans, select_mono
 from rendering.cairo_helpers import draw_arc_gauge, draw_text_centered
@@ -28,7 +28,6 @@ class ChargingContext(Context):
     """
 
     def __init__(self):
-        self._alerts = AlertEvaluator()
         self._charge_start: float | None = None
 
     def render(self, ctx, state, width, height):
@@ -97,9 +96,9 @@ class ChargingContext(Context):
             draw_text_centered(ctx, f"elapsed {eh:02d}:{em:02d}", cx, cy + 125)
 
         # ── Alerts ────────────────────────────────────────────────────
-        active_alerts = self._alerts.get_active_alerts(state)
-        if active_alerts:
-            draw_alert(ctx, active_alerts[0], cx, cy + 340)
+        if state.alert_manager:
+            alerts = state.alert_manager.get_display_alerts()
+            draw_alerts(ctx, alerts, cx, cy + 300)
 
     def on_enter(self, state):
         self._charge_start = time.monotonic()

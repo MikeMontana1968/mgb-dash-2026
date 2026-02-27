@@ -41,6 +41,7 @@ class VehicleState:
         self._signals: Dict[str, SignalValue] = {}
         self._heartbeats: Dict[str, HeartbeatInfo] = {}
         self._raw_frames: Dict[int, tuple] = {}   # arb_id -> (data_bytes, timestamp)
+        self.alert_manager = None  # set by main.py after AlertManager is created
 
     def update_signals(self, decoded: dict):
         """Batch update from a decoded CAN message."""

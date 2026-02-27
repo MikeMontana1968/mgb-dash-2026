@@ -2,9 +2,13 @@
 
 import abc
 import struct
+import logging
 from vehicle_state import VehicleState
 from common.python import can_ids, leaf_messages, resolve_messages
+from common.python.can_log import decode_log_frame, decode_text_frame
 import clock_sync
+
+logger = logging.getLogger("dash")
 
 
 class DataSource(abc.ABC):
@@ -13,6 +17,9 @@ class DataSource(abc.ABC):
 
     def __init__(self, state: VehicleState):
         self._state = state
+        self._pending_log: dict | None = None  # partial LOG awaiting LOG_TEXT frames
+        self._pending_text_chunks: list[str] = []
+        self._pending_text_expected: int = 0
 
     @abc.abstractmethod
     def start(self):
@@ -112,3 +119,44 @@ class DataSource(abc.ABC):
             self._state.update_signals({"gps_utc_offset_min": offset_min})
             clock_sync.try_sync_clock(self._state)
             return
+
+        # ── LOG (0x731) — structured log event ────────────────────
+        if arb_id == can_ids.CAN_ID_LOG:
+            try:
+                decoded = decode_log_frame(data)
+                text_frames = decoded["text_frames"]
+                if text_frames > 0:
+                    # Park the log, wait for LOG_TEXT continuations
+                    self._pending_log = decoded
+                    self._pending_text_chunks = []
+                    self._pending_text_expected = text_frames
+                else:
+                    self._emit_log_alert(decoded, "")
+            except Exception as e:
+                logger.debug("LOG decode error: %s", e)
+            return
+
+        # ── LOG_TEXT (0x732) — text continuation ──────────────────
+        if arb_id == can_ids.CAN_ID_LOG_TEXT:
+            if self._pending_log is None:
+                return
+            try:
+                _index, chunk = decode_text_frame(data)
+                self._pending_text_chunks.append(chunk)
+                if len(self._pending_text_chunks) >= self._pending_text_expected:
+                    text = "".join(self._pending_text_chunks)
+                    self._emit_log_alert(self._pending_log, text)
+                    self._pending_log = None
+            except Exception as e:
+                logger.debug("LOG_TEXT decode error: %s", e)
+            return
+
+    def _emit_log_alert(self, decoded: dict, text: str):
+        """Push a decoded LOG frame to the AlertManager."""
+        if self._state.alert_manager is not None:
+            self._state.alert_manager.push(
+                role=decoded["role"],
+                level=decoded["level"],
+                event=decoded["event"],
+                text=text,
+            )

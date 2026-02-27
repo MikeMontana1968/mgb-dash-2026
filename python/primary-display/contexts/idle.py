@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 from .base import Context
-from .alerts import AlertEvaluator, draw_alert
+from .alerts import draw_alerts
 from rendering.colors import TEXT_WHITE, TEXT_DIM, ARC_RANGE
 from rendering.fonts import select_sans, select_mono
 from rendering.cairo_helpers import draw_text_centered
@@ -19,7 +19,6 @@ class IdleContext(Context):
 
     def __init__(self):
         self._key_on_time: float | None = None
-        self._alerts = AlertEvaluator()
 
     def render(self, ctx, state, width, height):
         cx, cy = width / 2, height / 2
@@ -62,9 +61,9 @@ class IdleContext(Context):
         draw_text_centered(ctx, f"ODO {odo:,.0f} mi", cx, cy + 100)
 
         # ── Alerts ────────────────────────────────────────────────────
-        active_alerts = self._alerts.get_active_alerts(state)
-        if active_alerts:
-            draw_alert(ctx, active_alerts[0], cx, cy + 340)
+        if state.alert_manager:
+            alerts = state.alert_manager.get_display_alerts()
+            draw_alerts(ctx, alerts, cx, cy + 300)
 
     def on_enter(self, state):
         if self._key_on_time is None:

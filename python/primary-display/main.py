@@ -51,9 +51,11 @@ def main():
     logger.info("Source: %s  Scenario: %s  Speed: %.1fx",
                 args.source, args.scenario, args.speed)
 
-    # ── Data model ───────────────────────────────────────────────────
+    # ── Data model + alert manager ────────────────────────────────────
     from vehicle_state import VehicleState
+    from contexts.alerts import AlertManager
     state = VehicleState()
+    state.alert_manager = AlertManager()
 
     # ── Data source ──────────────────────────────────────────────────
     if args.source == "synthetic":
