@@ -40,7 +40,7 @@ def main():
     )
     parser.add_argument("--file", help="Replay log file path")
     parser.add_argument(
-        "--context", default="diagnostics",
+        "--context", default="startup",
         help="Initial display context"
     )
     parser.add_argument("--width", type=int, default=800)
@@ -69,11 +69,21 @@ def main():
 
     # ── Contexts ─────────────────────────────────────────────────────
     from contexts.diagnostics import DiagnosticsContext
+    from contexts.driving import DrivingContext
+    from contexts.idle import IdleContext
+    from contexts.charging import ChargingContext
+    from contexts.startup import StartupContext
     from contexts.context_manager import ContextManager
 
     diag = DiagnosticsContext()
     diag.set_source_label(args.source)
-    contexts = {"diagnostics": diag}
+    contexts = {
+        "startup":     StartupContext(),
+        "driving":     DrivingContext(),
+        "idle":        IdleContext(),
+        "charging":    ChargingContext(),
+        "diagnostics": diag,
+    }
     cm = ContextManager(contexts, initial=args.context)
 
     # ── Display engine ───────────────────────────────────────────────

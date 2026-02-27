@@ -18,6 +18,18 @@ TEXT_LABEL = (0.70, 0.70, 0.75, 1.0)
 # UI accents
 GROUP_HEADER = (0.40, 0.50, 0.70, 1.0)
 
+# Arc gauge fills
+ARC_SPEED          = (0.80, 0.41, 0.20, 1.0)   # orange/copper
+ARC_AMPS_DISCHARGE = (0.70, 0.12, 0.12, 1.0)   # dark red (discharging)
+ARC_AMPS_REGEN     = (0.20, 0.75, 0.30, 1.0)   # green (regenerating)
+ARC_RANGE          = (0.27, 0.80, 0.40, 1.0)   # green
+ARC_TRACK          = (0.15, 0.15, 0.15, 1.0)   # dark gray background
+
+# Alert severities
+ALERT_RED    = (0.90, 0.15, 0.15, 1.0)
+ALERT_YELLOW = (0.95, 0.85, 0.15, 1.0)
+ALERT_CYAN   = (0.0,  0.85, 0.90, 1.0)
+
 
 def freshness_color(age_seconds: float) -> tuple:
     """Return RGBA tuple for the given signal age."""

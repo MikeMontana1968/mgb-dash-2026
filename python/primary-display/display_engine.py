@@ -4,6 +4,7 @@ import os
 import sys
 import math
 import logging
+from datetime import datetime
 
 import cairo
 import numpy as np
@@ -48,7 +49,8 @@ class DisplayEngine:
                 screen = pygame.display.set_mode((self._width, self._height))
             else:
                 raise
-        pygame.display.set_caption("MGB Dash 2026")
+        stamp = datetime.now().strftime("%a-%d %H:%M")
+        pygame.display.set_caption(f"MGB Dash 2026 — {stamp}")
         clock = pygame.time.Clock()
 
         self._running = True
