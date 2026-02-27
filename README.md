@@ -277,6 +277,31 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 
 **Alert system:** Bottom third of driving context. Shows alerts at or above configurable severity (DEBUG/INFO/WARN/ERROR/CRITICAL). Auto-acknowledged after 10 seconds. Sources: missing heartbeats, BMS warnings, temperature thresholds.
 
+#### Remote Control via Signals
+
+The display engine registers Unix signal handlers for remote control over SSH. Find the PID first, then send signals:
+
+```bash
+# Find the PID
+PID=$(ps aux | grep 'python.*main.py' | grep -v grep | awk '{print $2}')
+
+# Toggle diagnostics view on/off
+kill -USR2 $PID
+
+# Save screenshot to /tmp/mgb-screenshot.png
+kill -USR1 $PID
+
+# Then pull the screenshot to your local machine
+scp pi@primary.local:/tmp/mgb-screenshot.png .
+```
+
+| Signal | Action |
+|--------|--------|
+| `SIGUSR1` | Save screenshot to `/tmp/mgb-screenshot.png` |
+| `SIGUSR2` | Toggle diagnostics context on/off |
+
+**Keyboard shortcuts** (when the pygame window has focus): `d` toggles diagnostics, `Escape` quits.
+
 ---
 
 ### GPS Display — `python/gps-display/`

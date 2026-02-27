@@ -30,21 +30,21 @@ class DisplayEngine:
         self._running = False
 
     def run(self):
+        is_linux = sys.platform != "win32"
+
         # Platform-specific SDL setup
-        headless = sys.platform != "win32" and not os.environ.get("DISPLAY")
-        if headless:
+        if is_linux and not os.environ.get("DISPLAY"):
             os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
 
         pygame.init()
 
-        flags = 0
-        if headless:
-            flags = pygame.FULLSCREEN
+        # Always fullscreen on Linux (kmsdrm or Xwayland)
+        flags = pygame.FULLSCREEN if is_linux else 0
 
         try:
             screen = pygame.display.set_mode((self._width, self._height), flags)
         except pygame.error as e:
-            if headless:
+            if is_linux:
                 logger.warning("Display init failed (%s), falling back to dummy driver", e)
                 pygame.quit()
                 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -60,6 +60,7 @@ class DisplayEngine:
         self._screen = screen
 
         # SIGUSR1 → save screenshot (Linux only)
+        # SIGUSR2 → toggle diagnostics context (Linux only)
         if hasattr(signal, "SIGUSR1"):
             def _screenshot_handler(signum, frame):
                 path = "/tmp/mgb-screenshot.png"
@@ -69,6 +70,12 @@ class DisplayEngine:
                 except Exception as exc:
                     logger.error("Screenshot failed: %s", exc)
             signal.signal(signal.SIGUSR1, _screenshot_handler)
+
+        if hasattr(signal, "SIGUSR2"):
+            def _toggle_diag_handler(signum, frame):
+                logger.info("SIGUSR2 received — toggling diagnostics")
+                self._cm.toggle_diagnostics(self._state)
+            signal.signal(signal.SIGUSR2, _toggle_diag_handler)
 
         logger.info("Display engine started (%dx%d)", self._width, self._height)
 
