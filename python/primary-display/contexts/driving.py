@@ -120,14 +120,15 @@ class DrivingContext(Context):
         ctx.show_text(text)
 
     def _draw_arc_value(self, ctx, cx, cy, band, fill_ratio, text):
-        """Draw white value at the tip of the filled arc."""
-        mid_r = (band[0] + band[1]) / 2
-        tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05)
-        vx = cx + mid_r * math.cos(tip_angle)
-        vy = cy + mid_r * math.sin(tip_angle)
-
+        """Draw white value just outside the outer edge of the arc."""
         select_sans(ctx, 16, bold=True)
-        ctx.set_source_rgba(*TEXT_WHITE)
         ext = ctx.text_extents(text)
+        # Place text center at outer_r + 2px + half text height
+        val_r = band[1] + 2 + ext.height / 2
+        tip_angle = _START_ANGLE + _SWEEP * max(fill_ratio, 0.05)
+        vx = cx + val_r * math.cos(tip_angle)
+        vy = cy + val_r * math.sin(tip_angle)
+
+        ctx.set_source_rgba(*TEXT_WHITE)
         ctx.move_to(vx - ext.width / 2, vy + ext.height / 2)
         ctx.show_text(text)
