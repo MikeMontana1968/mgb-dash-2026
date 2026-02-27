@@ -5,7 +5,7 @@ from typing import Optional
 from .base import Context
 from rendering.colors import (
     TEXT_WHITE, TEXT_DIM, TEXT_LABEL, GROUP_HEADER, NEVER_GRAY,
-    freshness_color,
+    FRESH_GREEN, freshness_color,
 )
 from rendering.fonts import select_mono, select_sans
 from rendering.cairo_helpers import chord_half_width
@@ -185,8 +185,13 @@ class DiagnosticsContext(Context):
             value_str = self._format_value(sv.value, unit)
 
         color = freshness_color(age)
-        # Cap age display at 99s (3-char max), "---" for stale/never
-        age_str = f"{int(age)}s" if age < 100 else "---"
+        # Age display: green checkmark if < 1s, integer seconds, "---" if stale
+        if age < 1.0:
+            age_str = "\u2713"   # ✓
+        elif age < 100:
+            age_str = f"{int(age)}s"
+        else:
+            age_str = "---"
         text_y = y + self.ROW_H - 4
         lx = col_x + self.PAD  # inner left edge
 
@@ -204,8 +209,11 @@ class DiagnosticsContext(Context):
         ctx.move_to(can_x, text_y)
         ctx.show_text(can_id[:3])
 
-        # Age — right-aligned (3 chars)
-        ctx.set_source_rgba(*TEXT_DIM)
+        # Age — right-aligned (3 chars), green checkmark if fresh
+        if age_str == "\u2713":
+            ctx.set_source_rgba(*FRESH_GREEN)
+        else:
+            ctx.set_source_rgba(*TEXT_DIM)
         ext = ctx.text_extents(age_str)
         ctx.move_to(age_right - ext.width, text_y)
         ctx.show_text(age_str)

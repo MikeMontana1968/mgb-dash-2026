@@ -17,11 +17,11 @@ from rendering.cairo_helpers import draw_arc_gauge, draw_arc_fill, draw_text_cen
 _START_ANGLE = 5 * math.pi / 6     # 150deg — 8 o'clock position
 _SWEEP       = 4 * math.pi / 3     # 240deg — clockwise to 4 o'clock
 
-# Radius bands (inner_r, outer_r) — 55px each, no gaps, outer→inner
-_RPM_BAND   = (335, 390)   # outermost
-_SPEED_BAND = (280, 335)
-_RANGE_BAND = (225, 280)
-_AMPS_BAND  = (170, 225)   # innermost
+# Radius bands (inner_r, outer_r) — 50px each, no gaps, outer→inner
+_RPM_BAND   = (300, 350)   # outermost (50px from circle edge)
+_SPEED_BAND = (250, 300)
+_RANGE_BAND = (200, 250)
+_AMPS_BAND  = (150, 200)   # innermost
 
 # Scales
 _RPM_MAX   = 10000.0  # Leaf motor max RPM

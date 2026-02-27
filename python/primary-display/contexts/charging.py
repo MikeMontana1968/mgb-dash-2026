@@ -13,8 +13,8 @@ from rendering.cairo_helpers import draw_arc_gauge, draw_text_centered
 # Single SOC arc — 270deg sweep (gap at bottom)
 _START_ANGLE = 3 * math.pi / 4    # 135deg — ~7:30 clock position
 _SWEEP       = 3 * math.pi / 2    # 270deg
-_INNER_R     = 290
-_OUTER_R     = 340
+_INNER_R     = 270
+_OUTER_R     = 320
 
 # Leaf AZE0 usable capacity ~24 kWh, ~3.5 mi/kWh typical EV efficiency
 _BATTERY_KWH = 24.0
