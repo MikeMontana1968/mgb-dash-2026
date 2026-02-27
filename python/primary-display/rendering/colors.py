@@ -18,14 +18,14 @@ TEXT_LABEL = (0.70, 0.70, 0.75, 1.0)
 # UI accents
 GROUP_HEADER = (0.40, 0.50, 0.70, 1.0)
 
-# Arc gauge fills
-ARC_RPM            = (0.40, 0.65, 0.85, 1.0)   # steel blue
-ARC_SPEED          = (0.80, 0.41, 0.20, 1.0)   # orange/copper
-ARC_AMPS_DISCHARGE = (0.70, 0.12, 0.12, 1.0)   # dark red (discharging)
-ARC_AMPS_REGEN     = (0.20, 0.75, 0.30, 1.0)   # green (regenerating)
-ARC_RANGE          = (0.90, 0.55, 0.15, 1.0)   # orange (current estimate)
-ARC_RANGE_OPTIMIST = (0.35, 0.90, 0.50, 1.0)   # bright green (best case)
-ARC_RANGE_PESSIMIST= (0.85, 0.30, 0.30, 1.0)   # light red (worst case)
+# Arc gauge fills — 1970s palette
+ARC_RPM            = (0.25, 0.58, 0.58, 1.0)   # teal
+ARC_SPEED          = (0.85, 0.68, 0.20, 1.0)   # harvest gold
+ARC_AMPS_DISCHARGE = (0.75, 0.30, 0.15, 1.0)   # rust
+ARC_AMPS_REGEN     = (0.50, 0.62, 0.22, 1.0)   # avocado green
+ARC_RANGE          = (0.82, 0.50, 0.18, 1.0)   # burnt orange (current estimate)
+ARC_RANGE_OPTIMIST = (0.58, 0.68, 0.28, 1.0)   # avocado (best case)
+ARC_RANGE_PESSIMIST= (0.72, 0.32, 0.18, 1.0)   # terracotta (worst case)
 ARC_TRACK          = (0.15, 0.15, 0.15, 1.0)   # dark gray background
 
 # Alert severities
