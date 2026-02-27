@@ -78,8 +78,15 @@ class DiagnosticsContext(Context):
     GRID_TOP = 70
     GRID_BOT_MARGIN = 80      # reserved at bottom for heartbeat bar
     PAD = 4                   # padding inside group borders
-    COL_GAP = 16              # gap between left and right columns
+    COL_GAP = 8               # gap between left and right columns
     GROUP_GAP = 4             # vertical gap between group boxes
+
+    # Character-count column spec: CAN(3) gap(1) Age(3) gap(1) Value(8) gap(1) Label(12)
+    COL_CHARS = 29            # total chars per row
+    CAN_CHARS = 3
+    AGE_CHARS = 3
+    VAL_CHARS = 8
+    LBL_CHARS = 12
 
     def __init__(self):
         self._previous_context = "diagnostics"
@@ -108,17 +115,17 @@ class DiagnosticsContext(Context):
         ctx.move_to(cx - ext.width / 2, 65)
         ctx.show_text(self._source_label)
 
-        # ── Column geometry ──────────────────────────────────────────
-        grid_mid_y = (self.GRID_TOP + height - self.GRID_BOT_MARGIN) / 2
-        hw = chord_half_width(grid_mid_y, cy, radius)
-        usable_w = 2 * hw - 40        # 20 px inset each side
-        col_w = (usable_w - self.COL_GAP) / 2
-        left_x = cx - hw + 20
+        # ── Column geometry (character-width based, centered) ────────
+        select_mono(ctx, self.FONT_SZ)
+        char_w = ctx.text_extents("M").x_advance
+        col_w = self.COL_CHARS * char_w + 2 * self.PAD
+        total_w = 2 * col_w + self.COL_GAP
+        left_x = cx - total_w / 2
         right_x = left_x + col_w + self.COL_GAP
 
         # ── Draw two columns ─────────────────────────────────────────
-        self._draw_column(ctx, signals, LEFT_GROUPS, left_x, col_w)
-        self._draw_column(ctx, signals, RIGHT_GROUPS, right_x, col_w)
+        self._draw_column(ctx, signals, LEFT_GROUPS, left_x, col_w, char_w)
+        self._draw_column(ctx, signals, RIGHT_GROUPS, right_x, col_w, char_w)
 
         # ── Heartbeat bar ────────────────────────────────────────────
         self._draw_heartbeat_bar(ctx, heartbeats, width, height, cx, radius)
@@ -140,7 +147,7 @@ class DiagnosticsContext(Context):
 
     # ── Drawing helpers ──────────────────────────────────────────────
 
-    def _draw_column(self, ctx, signals, group_indices, col_x, col_w):
+    def _draw_column(self, ctx, signals, group_indices, col_x, col_w, char_w):
         y = self.GRID_TOP
         for gi in group_indices:
             group_name, sigs = SIGNAL_GROUPS[gi]
@@ -156,7 +163,7 @@ class DiagnosticsContext(Context):
             # Group header (spans border width)
             select_mono(ctx, self.HDR_FONT_SZ, bold=True)
             ctx.set_source_rgba(*GROUP_HEADER)
-            ctx.move_to(col_x + self.PAD + 2, y + self.PAD + self.ROW_H - 4)
+            ctx.move_to(col_x + self.PAD, y + self.PAD + self.ROW_H - 4)
             ctx.show_text(group_name)
 
             # Signal rows
@@ -164,12 +171,12 @@ class DiagnosticsContext(Context):
             for sig_key, sig_label, sig_unit, can_id in sigs:
                 sv = signals.get(sig_key)
                 self._draw_signal_row(ctx, can_id, sig_label, sig_unit, sv,
-                                      row_y, col_x, col_w)
+                                      row_y, col_x, char_w)
                 row_y += self.ROW_H
 
             y += box_h + self.GROUP_GAP
 
-    def _draw_signal_row(self, ctx, can_id, label, unit, sv, y, col_x, col_w):
+    def _draw_signal_row(self, ctx, can_id, label, unit, sv, y, col_x, char_w):
         if sv is None:
             age = float("inf")
             value_str = "---"
@@ -178,35 +185,42 @@ class DiagnosticsContext(Context):
             value_str = self._format_value(sv.value, unit)
 
         color = freshness_color(age)
-        age_str = f"{int(age)}s" if age < 999 else "---"
+        # Cap age display at 99s (3-char max), "---" for stale/never
+        age_str = f"{int(age)}s" if age < 100 else "---"
         text_y = y + self.ROW_H - 4
-        lx = col_x + self.PAD + 2  # inner left edge
+        lx = col_x + self.PAD  # inner left edge
 
         select_mono(ctx, self.FONT_SZ)
 
-        # CAN ID — left-aligned
-        ctx.set_source_rgba(*TEXT_DIM)
-        ctx.move_to(lx, text_y)
-        ctx.show_text(can_id)
+        # Field positions (char-count based):
+        #   CAN(3) gap(1) Age(3) gap(1) Value(8) gap(1) Label(12)
+        can_x = lx
+        age_right = lx + 7 * char_w     # right edge of age field
+        val_right = lx + 16 * char_w    # right edge of value field
+        lbl_x = lx + 17 * char_w        # left edge of label field
 
-        # Age — right-aligned in slot
-        age_right = lx + 72
+        # CAN ID — left-aligned (3 chars)
+        ctx.set_source_rgba(*TEXT_DIM)
+        ctx.move_to(can_x, text_y)
+        ctx.show_text(can_id[:3])
+
+        # Age — right-aligned (3 chars)
         ctx.set_source_rgba(*TEXT_DIM)
         ext = ctx.text_extents(age_str)
         ctx.move_to(age_right - ext.width, text_y)
         ctx.show_text(age_str)
 
-        # Value — right-aligned in slot, freshness-colored
-        val_right = lx + 180
+        # Value — right-aligned (8 chars), freshness-colored
+        value_str = value_str[:8]
         ctx.set_source_rgba(*color)
         ext = ctx.text_extents(value_str)
         ctx.move_to(val_right - ext.width, text_y)
         ctx.show_text(value_str)
 
-        # Label — left-aligned after value slot
-        ctx.set_source_rgba(*TEXT_LABEL)
-        ctx.move_to(lx + 186, text_y)
-        ctx.show_text(label)
+        # Label — left-aligned (12 chars), white
+        ctx.set_source_rgba(*TEXT_WHITE)
+        ctx.move_to(lbl_x, text_y)
+        ctx.show_text(label[:12])
 
     def _draw_heartbeat_bar(self, ctx, heartbeats, width, height, cx, radius):
         bar_y = height - 60
