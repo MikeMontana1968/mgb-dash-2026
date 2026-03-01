@@ -26,7 +26,7 @@ Preferences prefs;
 
 // ── Drivetrain constants (compile-time) ─────────────────────────────
 static constexpr double MILES_PER_PULSE =
-    (TIRE_DIAMETER_IN * M_PI) / (DIFF_RATIO * 63360.0);
+    (TIRE_DIAMETER_IN * M_PI) / (HALL_MAGNETS_PER_REV * DIFF_RATIO * 63360.0);
 
 // ── Hall sensor state ───────────────────────────────────────────────
 volatile uint32_t hallPulseCount = 0;

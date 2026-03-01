@@ -35,7 +35,11 @@ void setup() {
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
     ledRing.init(PIN_LED_DATA, LED_COUNT);
 
+    // Stepper home sensor (optical endstop, active-low)
+    pinMode(PIN_STEPPER_HOME, INPUT_PULLUP);
+
     // TODO: Init stepper motor driver (28BYJ-48 + ULN2003)
+    // TODO: Home stepper — rotate until PIN_STEPPER_HOME goes LOW, then zero position
     // TODO: Init servo for gear indicator disc
     // TODO: Init eInk display (SPI, tri-color 1.54" 200x200)
 
