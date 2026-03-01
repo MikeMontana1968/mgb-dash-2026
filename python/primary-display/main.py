@@ -20,6 +20,7 @@ import argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from common.python.log_setup import setup_logging
+from common.python.version import get_version
 
 logger = setup_logging("dash")
 
@@ -47,7 +48,8 @@ def main():
     parser.add_argument("--height", type=int, default=800)
     args = parser.parse_args()
 
-    logger.critical("Primary display starting...")
+    version = get_version("DASH")
+    logger.critical("%s starting...", version)
     logger.info("Source: %s  Scenario: %s  Speed: %.1fx",
                 args.source, args.scenario, args.speed)
 

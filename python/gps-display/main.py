@@ -29,6 +29,7 @@ from common.python import can_ids
 from common.python.can_log import can_log, LogRole, LogLevel, LogEvent
 from common.python.can_listener import CanListener
 from common.python.log_setup import setup_logging
+from common.python.version import get_version
 
 logger = setup_logging("gps")
 
@@ -267,7 +268,8 @@ def send_heartbeat(bus, counter):
 
 # ── Main ──────────────────────────────────────────────────────────────
 def main():
-    logger.critical("GPS display starting...")
+    version = get_version("GPS")
+    logger.critical("%s starting...", version)
 
     # Singleton check — prevent duplicate processes
     me = singleton.SingleInstance()

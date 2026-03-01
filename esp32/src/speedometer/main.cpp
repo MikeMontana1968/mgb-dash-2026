@@ -26,10 +26,14 @@ bool canSilenceMode = false;
 
 void setup() {
     Serial.begin(115200);
-    ESP_LOGI(TAG, "Speedometer starting...");
+
+    char versionStr[48];
+    snprintf(versionStr, sizeof(versionStr), "%s v%d.%s.%s",
+             GAUGE_ROLE_NAME, VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
+    ESP_LOGI(TAG, "%s starting...", versionStr);
 
     canLog.init(&canBus, LOG_ROLE);
-    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
+    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START, 0, versionStr);
 
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
