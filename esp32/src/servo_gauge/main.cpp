@@ -223,14 +223,10 @@ static void updateAnimations() {
 
 void setup() {
     Serial.begin(115200);
-
-    char versionStr[48];
-    snprintf(versionStr, sizeof(versionStr), "%s v%d.%s.%s",
-             GAUGE_ROLE_NAME, VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
-    ESP_LOGI(TAG, "%s starting...", versionStr);
+    ESP_LOGI(TAG, "Servo gauge starting...");
 
     canLog.init(&canBus, LOG_ROLE);
-    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START, 0, versionStr);
+    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
 
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
