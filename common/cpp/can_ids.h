@@ -39,7 +39,7 @@ constexpr uint32_t CAN_ID_BODY_SPEED    = 0x711;  // Speed (64-bit double, mph)
 constexpr uint32_t CAN_ID_BODY_GEAR     = 0x712;  // Estimated gear
 constexpr uint32_t CAN_ID_BODY_ODOMETER = 0x713;  // Odometer (uint32, miles)
 
-// Body state bit flags (byte 0 of 0x710 payload)
+// Body state bit flags — byte 0 of 0x710 payload
 constexpr uint8_t BODY_FLAG_KEY_ON       = (1 << 0);
 constexpr uint8_t BODY_FLAG_BRAKE        = (1 << 1);
 constexpr uint8_t BODY_FLAG_REGEN        = (1 << 2);
@@ -48,6 +48,13 @@ constexpr uint8_t BODY_FLAG_REVERSE      = (1 << 4);
 constexpr uint8_t BODY_FLAG_LEFT_TURN    = (1 << 5);
 constexpr uint8_t BODY_FLAG_RIGHT_TURN   = (1 << 6);
 constexpr uint8_t BODY_FLAG_HAZARD       = (1 << 7);
+
+// Body state bit flags — byte 1 of 0x710 payload
+constexpr uint8_t BODY_FLAG2_KEY_START      = (1 << 0);
+constexpr uint8_t BODY_FLAG2_KEY_ACCESSORY  = (1 << 1);
+constexpr uint8_t BODY_FLAG2_RUNNING_LIGHTS = (1 << 2);
+constexpr uint8_t BODY_FLAG2_HEADLIGHTS     = (1 << 3);
+constexpr uint8_t BODY_FLAG2_CHARGE_PORT    = (1 << 4);
 
 // Gear values (byte 0 of 0x712 payload)
 constexpr uint8_t GEAR_NEUTRAL = 0;

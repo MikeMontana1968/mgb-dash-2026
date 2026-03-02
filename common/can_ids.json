@@ -35,7 +35,14 @@
           "bit_6": "RIGHT_TURN",
           "bit_7": "HAZARD"
         },
-        "bytes_1_7": "Reserved (0x00)"
+        "byte_1": {
+          "bit_0": "KEY_START",
+          "bit_1": "KEY_ACCESSORY",
+          "bit_2": "RUNNING_LIGHTS",
+          "bit_3": "HEADLIGHTS",
+          "bit_4": "CHARGE_PORT"
+        },
+        "bytes_2_7": "Reserved (0x00)"
       }
     },
     "0x711": {

@@ -59,7 +59,8 @@ unsigned long rightOnMs = 0;
 static constexpr unsigned long HAZARD_WINDOW_MS = 50;
 
 // ── GPIO / body flags ───────────────────────────────────────────────
-uint8_t bodyFlags = 0;
+uint8_t bodyFlags  = 0;  // byte 0 of BODY_STATE
+uint8_t bodyFlags2 = 0;  // byte 1 of BODY_STATE
 bool prevKeyOn = false;
 
 // ── Timing ──────────────────────────────────────────────────────────
@@ -75,16 +76,22 @@ bool canSilenceMode = false;
 // Helper: Read GPIOs and build body flags with hazard detection
 // ═════════════════════════════════════════════════════════════════════
 void readGPIO(unsigned long now) {
-    // Optocouplers are active-low → invert
-    bool keyOn   = !digitalRead(PIN_KEY_ON);
-    bool brake   = !digitalRead(PIN_BRAKE);
-    bool regen   = !digitalRead(PIN_REGEN);
-    bool fan     = !digitalRead(PIN_FAN);
-    bool reverse = !digitalRead(PIN_REVERSE);
-    bool left    = !digitalRead(PIN_LEFT_TURN);
-    bool right   = !digitalRead(PIN_RIGHT_TURN);
+    // 12V signals through resistor dividers → active-high at GPIO
+    bool keyOn      = digitalRead(PIN_KEY_ON);
+    bool keyStart   = digitalRead(PIN_KEY_START);
+    bool keyAcc     = digitalRead(PIN_KEY_ACCESSORY);
+    bool brake      = digitalRead(PIN_BRAKE);
+    bool regen      = digitalRead(PIN_REGEN);
+    bool fan        = digitalRead(PIN_FAN);
+    bool reverse    = digitalRead(PIN_REVERSE);
+    bool left       = digitalRead(PIN_LEFT_TURN);
+    bool right      = digitalRead(PIN_RIGHT_TURN);
+    bool hazard     = digitalRead(PIN_HAZARD);
+    bool runLights  = digitalRead(PIN_RUNNING_LIGHTS);
+    bool headlights = digitalRead(PIN_HEADLIGHTS);
+    bool chargePort = digitalRead(PIN_CHARGE_PORT);
 
-    // Build base flags
+    // ── Byte 0 flags ────────────────────────────────────────────────
     bodyFlags = 0;
     if (keyOn)   bodyFlags |= BODY_FLAG_KEY_ON;
     if (brake)   bodyFlags |= BODY_FLAG_BRAKE;
@@ -92,26 +99,38 @@ void readGPIO(unsigned long now) {
     if (fan)     bodyFlags |= BODY_FLAG_FAN;
     if (reverse) bodyFlags |= BODY_FLAG_REVERSE;
 
-    // ── Hazard detection ────────────────────────────────────────────
-    // Track off→on transitions
-    if (left && !leftActive)   leftOnMs = now;
-    if (right && !rightActive) rightOnMs = now;
+    // Hazard: dedicated input takes priority; fall back to timing detection
+    if (hazard) {
+        bodyFlags |= BODY_FLAG_HAZARD;
+    } else {
+        // Track off→on transitions for timing-based hazard detection
+        if (left && !leftActive)   leftOnMs = now;
+        if (right && !rightActive) rightOnMs = now;
+
+        if (left && right) {
+            unsigned long delta = (leftOnMs > rightOnMs)
+                ? (leftOnMs - rightOnMs) : (rightOnMs - leftOnMs);
+            if (delta <= HAZARD_WINDOW_MS) {
+                bodyFlags |= BODY_FLAG_HAZARD;
+            } else {
+                bodyFlags |= BODY_FLAG_LEFT_TURN;
+                bodyFlags |= BODY_FLAG_RIGHT_TURN;
+            }
+        } else {
+            if (left)  bodyFlags |= BODY_FLAG_LEFT_TURN;
+            if (right) bodyFlags |= BODY_FLAG_RIGHT_TURN;
+        }
+    }
     leftActive  = left;
     rightActive = right;
 
-    if (left && right) {
-        unsigned long delta = (leftOnMs > rightOnMs)
-            ? (leftOnMs - rightOnMs) : (rightOnMs - leftOnMs);
-        if (delta <= HAZARD_WINDOW_MS) {
-            bodyFlags |= BODY_FLAG_HAZARD;
-        } else {
-            bodyFlags |= BODY_FLAG_LEFT_TURN;
-            bodyFlags |= BODY_FLAG_RIGHT_TURN;
-        }
-    } else {
-        if (left)  bodyFlags |= BODY_FLAG_LEFT_TURN;
-        if (right) bodyFlags |= BODY_FLAG_RIGHT_TURN;
-    }
+    // ── Byte 1 flags ────────────────────────────────────────────────
+    bodyFlags2 = 0;
+    if (keyStart)   bodyFlags2 |= BODY_FLAG2_KEY_START;
+    if (keyAcc)     bodyFlags2 |= BODY_FLAG2_KEY_ACCESSORY;
+    if (runLights)  bodyFlags2 |= BODY_FLAG2_RUNNING_LIGHTS;
+    if (headlights) bodyFlags2 |= BODY_FLAG2_HEADLIGHTS;
+    if (chargePort) bodyFlags2 |= BODY_FLAG2_CHARGE_PORT;
 
     // ── Key on/off edge detection ───────────────────────────────────
     if (keyOn && !prevKeyOn) {
@@ -237,14 +256,20 @@ void setup() {
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
 
-    // Digital inputs
+    // Digital inputs (13 channels via resistor dividers from 12V signals)
     pinMode(PIN_KEY_ON, INPUT);
+    pinMode(PIN_KEY_START, INPUT);
+    pinMode(PIN_KEY_ACCESSORY, INPUT);
+    pinMode(PIN_LEFT_TURN, INPUT);
+    pinMode(PIN_RIGHT_TURN, INPUT);
+    pinMode(PIN_HAZARD, INPUT);
+    pinMode(PIN_RUNNING_LIGHTS, INPUT);
+    pinMode(PIN_HEADLIGHTS, INPUT);
     pinMode(PIN_BRAKE, INPUT);
     pinMode(PIN_REGEN, INPUT);
     pinMode(PIN_FAN, INPUT);
     pinMode(PIN_REVERSE, INPUT);
-    pinMode(PIN_LEFT_TURN, INPUT);
-    pinMode(PIN_RIGHT_TURN, INPUT);
+    pinMode(PIN_CHARGE_PORT, INPUT);
 
     // Hall sensor (interrupt-driven)
     pinMode(PIN_HALL_SENSOR, INPUT_PULLUP);
@@ -305,6 +330,7 @@ void loop() {
         // Broadcast BODY_STATE (0x710)
         uint8_t statePayload[8] = {};
         statePayload[0] = bodyFlags;
+        statePayload[1] = bodyFlags2;
         canBus.safeTransmit(CAN_ID_BODY_STATE, statePayload, 8);
 
         computeSpeed(now);
