@@ -14,6 +14,9 @@ This regenerates:
 - `common/python/can_ids.py`
 - `common/python/leaf_messages.py`
 - `common/python/resolve_messages.py`
+- `common/cpp/can_ids.h`
+- `common/cpp/leaf_messages.h`
+- `common/cpp/resolve_messages.h`
 
 Do NOT edit these generated files by hand — changes will be overwritten.
 

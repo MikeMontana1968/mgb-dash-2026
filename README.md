@@ -157,7 +157,7 @@ python python/tools/codegen.py
 | **Primary Display** | Phase 1+2 complete | pycairo+pygame, 5 contexts, alert system, CAN receive, clock sync |
 | **GPS Display** | Fully ported | 24hr clock dial, sun/moon arcs, CAN broadcast (0x720–0x727), ambient light, backlight PWM |
 | **Shared Libraries** | Complete | CanBus, Heartbeat, CanLog, LedRing, ServoGauge, StepperWheel, LeafCan |
-| **Code Generator** | Complete | `python/tools/codegen.py`: JSON → Python modules |
+| **Code Generator** | Complete | `python/tools/codegen.py`: JSON → Python modules + C++ headers |
 
 ### Not Yet Implemented
 
@@ -166,5 +166,4 @@ python python/tools/codegen.py
 - Phone app BLE and UI logic
 - Tool scripts (stubs only — no python-can integration)
 - CI/CD, testing infrastructure, git hooks
-- C++ header code generator (Python codegen done)
 - Hardware integration testing

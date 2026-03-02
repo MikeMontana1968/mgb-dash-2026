@@ -188,4 +188,4 @@ The JSON file is canonical. Python modules are auto-generated:
 python python/tools/codegen.py
 ```
 
-This regenerates `can_ids.py`, `leaf_messages.py`, and `resolve_messages.py`. Do **not** edit these files by hand — changes will be overwritten. C++ headers are currently maintained manually.
+This regenerates all 6 derived files (3 Python + 3 C++). Do **not** edit these files by hand — changes will be overwritten.

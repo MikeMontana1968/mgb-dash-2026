@@ -3,9 +3,12 @@
     "description": "MGB Dash 2026 — Master CAN ID definitions (single source of truth)",
     "bus_speed_kbps": 500,
     "id_format": "11-bit standard",
-    "custom_id_range": { "min": "0x700", "max": "0x73F" }
+    "custom_id_range": {
+      "min": "0x700",
+      "max": "0x73F"
+    },
+    "silence_timeout_ms": 5000
   },
-
   "custom_ids": {
     "0x700": {
       "name": "HEARTBEAT",
@@ -80,42 +83,54 @@
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS speed",
-      "payload": { "bytes_0_7": "64-bit double, speed in mph" }
+      "payload": {
+        "bytes_0_7": "64-bit double, speed in mph"
+      }
     },
     "0x721": {
       "name": "GPS_TIME",
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS time (seconds since midnight UTC)",
-      "payload": { "bytes_0_7": "64-bit double, seconds since midnight UTC" }
+      "payload": {
+        "bytes_0_7": "64-bit double, seconds since midnight UTC"
+      }
     },
     "0x722": {
       "name": "GPS_DATE",
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS date (days since epoch 2000-01-01)",
-      "payload": { "bytes_0_7": "64-bit double, days since 2000-01-01" }
+      "payload": {
+        "bytes_0_7": "64-bit double, days since 2000-01-01"
+      }
     },
     "0x723": {
       "name": "GPS_LATITUDE",
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS latitude",
-      "payload": { "bytes_0_7": "64-bit double, decimal degrees (negative = south)" }
+      "payload": {
+        "bytes_0_7": "64-bit double, decimal degrees (negative = south)"
+      }
     },
     "0x724": {
       "name": "GPS_LONGITUDE",
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS longitude",
-      "payload": { "bytes_0_7": "64-bit double, decimal degrees (negative = west)" }
+      "payload": {
+        "bytes_0_7": "64-bit double, decimal degrees (negative = west)"
+      }
     },
     "0x725": {
       "name": "GPS_ELEVATION",
       "source": "gps_display",
       "rate_hz": 2,
       "description": "GPS elevation",
-      "payload": { "bytes_0_7": "64-bit double, meters above sea level" }
+      "payload": {
+        "bytes_0_7": "64-bit double, meters above sea level"
+      }
     },
     "0x726": {
       "name": "GPS_AMBIENT_LIGHT",
@@ -171,100 +186,315 @@
       }
     }
   },
-
   "leaf_ids": {
     "0x1DA": {
       "name": "LEAF_MOTOR_STATUS",
       "description": "Motor RPM, torque, fail-safe status",
       "signals": {
-        "MotorRPM": { "py_key": "motor_rpm", "start_byte": 1, "start_bit": 0, "length_bits": 16, "signed": true, "factor": 1, "offset": 0, "unit": "RPM", "notes": "bytes 1-2, big-endian signed" },
-        "AvailableTorque": { "py_key": "available_torque_nm", "start_byte": 3, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": -400, "unit": "Nm" },
-        "FailSafe": { "py_key": "failsafe", "start_byte": 6, "start_bit": 2, "length_bits": 2, "signed": false }
+        "MotorRPM": {
+          "py_key": "motor_rpm",
+          "cpp_key": "RPM",
+          "start_byte": 1,
+          "start_bit": 0,
+          "length_bits": 16,
+          "signed": true,
+          "factor": 1,
+          "offset": 0,
+          "unit": "RPM",
+          "notes": "bytes 1-2, big-endian signed"
+        },
+        "AvailableTorque": {
+          "py_key": "available_torque_nm",
+          "cpp_key": "TORQUE",
+          "start_byte": 3,
+          "start_bit": 0,
+          "length_bits": 10,
+          "signed": false,
+          "factor": 0.5,
+          "offset": -400,
+          "unit": "Nm"
+        },
+        "FailSafe": {
+          "py_key": "failsafe",
+          "cpp_key": "FAILSAFE",
+          "start_byte": 6,
+          "start_bit": 2,
+          "length_bits": 2,
+          "signed": false
+        }
       }
     },
     "0x1DB": {
       "name": "LEAF_BATTERY_STATUS",
       "description": "Battery voltage, current, SOC",
       "signals": {
-        "BatteryVoltage": { "py_key": "battery_voltage_v", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.5, "offset": 0, "unit": "V", "notes": "bytes 0-1 upper 10 bits, big-endian" },
-        "BatteryCurrent": { "py_key": "battery_current_a", "start_byte": 2, "start_bit": 0, "length_bits": 11, "signed": true, "factor": 0.5, "offset": 0, "unit": "A", "notes": "bytes 2-3 upper 11 bits, big-endian, positive = discharge" },
-        "SOC": { "py_key": "soc_percent", "start_byte": 4, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "Usable SOC" }
+        "BatteryVoltage": {
+          "py_key": "battery_voltage_v",
+          "cpp_key": "VOLTAGE",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 10,
+          "signed": false,
+          "factor": 0.5,
+          "offset": 0,
+          "unit": "V",
+          "notes": "bytes 0-1 upper 10 bits, big-endian"
+        },
+        "BatteryCurrent": {
+          "py_key": "battery_current_a",
+          "cpp_key": "CURRENT",
+          "start_byte": 2,
+          "start_bit": 0,
+          "length_bits": 11,
+          "signed": true,
+          "factor": 0.5,
+          "offset": 0,
+          "unit": "A",
+          "notes": "bytes 2-3 upper 11 bits, big-endian, positive = discharge"
+        },
+        "SOC": {
+          "py_key": "soc_percent",
+          "cpp_key": "SOC",
+          "start_byte": 4,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "factor": 1,
+          "offset": 0,
+          "unit": "%",
+          "notes": "Usable SOC"
+        }
       }
     },
     "0x55A": {
       "name": "LEAF_INVERTER_TEMPS",
       "description": "Motor and inverter temperatures",
       "signals": {
-        "MotorTemperature": { "py_key": "motor_temp_c", "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" },
-        "IGBTTemperature": { "py_key": "igbt_temp_c", "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" },
-        "InverterComBoardTemp": { "py_key": "inverter_temp_c", "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "factor": 0.5, "offset": 0, "unit": "\u00b0C" }
+        "MotorTemperature": {
+          "py_key": "motor_temp_c",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "factor": 0.5,
+          "offset": 0,
+          "unit": "°C",
+          "cpp_key": "MOTOR_TEMP"
+        },
+        "IGBTTemperature": {
+          "py_key": "igbt_temp_c",
+          "start_byte": 1,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "factor": 0.5,
+          "offset": 0,
+          "unit": "°C",
+          "cpp_key": "IGBT_TEMP"
+        },
+        "InverterComBoardTemp": {
+          "py_key": "inverter_temp_c",
+          "start_byte": 2,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "factor": 0.5,
+          "offset": 0,
+          "unit": "°C",
+          "cpp_key": "INVERTER_TEMP"
+        }
       }
     },
     "0x55B": {
       "name": "LEAF_SOC_PRECISE",
       "description": "High-precision SOC",
       "signals": {
-        "SOC_Precise": { "py_key": "soc_precise_percent", "start_byte": 0, "start_bit": 0, "length_bits": 16, "signed": false, "factor": 0.01, "offset": 0, "unit": "%", "notes": "bytes 0-1, big-endian, divide by 100 for %" }
+        "SOC_Precise": {
+          "py_key": "soc_precise_percent",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 16,
+          "signed": false,
+          "factor": 0.01,
+          "offset": 0,
+          "unit": "%",
+          "notes": "bytes 0-1, big-endian, divide by 100 for %",
+          "cpp_key": "SOC"
+        }
       }
     },
     "0x5BC": {
       "name": "LEAF_BATTERY_HEALTH",
       "description": "Battery capacity, SOH, GIDs",
       "signals": {
-        "GIDs": { "py_key": "gids", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 1, "offset": 0, "unit": "GIDs", "notes": "bytes 0-1 upper 10 bits" },
-        "SOH": { "py_key": "soh_percent", "start_byte": 4, "start_bit": 1, "length_bits": 7, "signed": false, "factor": 1, "offset": 0, "unit": "%", "notes": "byte 4 bits 1-7" }
+        "GIDs": {
+          "py_key": "gids",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 10,
+          "signed": false,
+          "factor": 1,
+          "offset": 0,
+          "unit": "GIDs",
+          "notes": "bytes 0-1 upper 10 bits",
+          "cpp_key": "GIDS"
+        },
+        "SOH": {
+          "py_key": "soh_percent",
+          "start_byte": 4,
+          "start_bit": 1,
+          "length_bits": 7,
+          "signed": false,
+          "factor": 1,
+          "offset": 0,
+          "unit": "%",
+          "notes": "byte 4 bits 1-7",
+          "cpp_key": "SOH"
+        }
       }
     },
     "0x5C0": {
       "name": "LEAF_BATTERY_TEMP",
       "description": "Battery pack temperature",
       "signals": {
-        "BatteryTemp": { "py_key": "battery_temp_c", "start_byte": 0, "start_bit": 0, "length_bits": 8, "signed": true, "factor": 1, "offset": -40, "unit": "\u00b0C", "notes": "byte 0, offset -40 (raw + offset = \u00b0C)" }
+        "BatteryTemp": {
+          "py_key": "battery_temp_c",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": true,
+          "factor": 1,
+          "offset": -40,
+          "unit": "°C",
+          "notes": "byte 0, offset -40 (raw + offset = °C)",
+          "cpp_key": "TEMP"
+        }
       }
     },
     "0x1DC": {
       "name": "LEAF_CHARGER",
       "description": "Charger/OBC status and power",
       "signals": {
-        "ChargePower": { "py_key": "charge_power_kw", "start_byte": 0, "start_bit": 0, "length_bits": 10, "signed": false, "factor": 0.25, "offset": 0, "unit": "kW", "notes": "bytes 0-1 upper 10 bits" }
+        "ChargePower": {
+          "py_key": "charge_power_kw",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 10,
+          "signed": false,
+          "factor": 0.25,
+          "offset": 0,
+          "unit": "kW",
+          "notes": "bytes 0-1 upper 10 bits",
+          "cpp_key": "POWER"
+        }
       }
     },
     "0x390": {
       "name": "LEAF_VCM",
       "description": "VCM operational status",
       "signals": {
-        "VCMMainRelay": { "py_key": "main_relay_closed", "start_byte": 4, "start_bit": 0, "length_bits": 1, "signed": false, "notes": "1 = main relay closed" }
+        "VCMMainRelay": {
+          "py_key": "main_relay_closed",
+          "start_byte": 4,
+          "start_bit": 0,
+          "length_bits": 1,
+          "signed": false,
+          "notes": "1 = main relay closed",
+          "cpp_key": "RELAY"
+        }
       }
     },
     "0x59E": {
       "name": "LEAF_AZE0_ID",
-      "description": "Present only on AZE0 (2013\u20132017) Leaf \u2014 used for generation detection",
+      "description": "Present only on AZE0 (2013–2017) Leaf — used for generation detection",
       "signals": {}
     }
   },
-
   "resolve_ids": {
     "0x539": {
       "name": "RESOLVE_DISPLAY",
       "description": "Resolve EV Controller display message",
       "signals": {
-        "Gear": { "py_key": "gear", "start_byte": 0, "start_bit": 0, "length_bits": 4, "signed": false },
-        "IgnitionOn": { "py_key": "ignition_on", "start_byte": 0, "start_bit": 4, "length_bits": 1, "signed": false },
-        "SystemOn": { "py_key": "system_on", "start_byte": 0, "start_bit": 5, "length_bits": 1, "signed": false },
-        "DisplayMaxChargeOn": { "py_key": "display_max_charge_on", "start_byte": 0, "start_bit": 6, "length_bits": 1, "signed": false },
-        "RegenStrength": { "py_key": "regen_strength", "start_byte": 1, "start_bit": 0, "length_bits": 8, "signed": false },
-        "SOCforDisplay": { "py_key": "soc_percent", "start_byte": 2, "start_bit": 0, "length_bits": 8, "signed": false, "unit": "%" }
+        "Gear": {
+          "py_key": "gear",
+          "start_byte": 0,
+          "start_bit": 0,
+          "length_bits": 4,
+          "signed": false,
+          "cpp_key": "GEAR"
+        },
+        "IgnitionOn": {
+          "py_key": "ignition_on",
+          "start_byte": 0,
+          "start_bit": 4,
+          "length_bits": 1,
+          "signed": false,
+          "cpp_key": "IGNITION_ON"
+        },
+        "SystemOn": {
+          "py_key": "system_on",
+          "start_byte": 0,
+          "start_bit": 5,
+          "length_bits": 1,
+          "signed": false,
+          "cpp_key": "SYSTEM_ON"
+        },
+        "DisplayMaxChargeOn": {
+          "py_key": "display_max_charge_on",
+          "start_byte": 0,
+          "start_bit": 6,
+          "length_bits": 1,
+          "signed": false,
+          "cpp_key": "DISPLAY_MAX_CHARGE"
+        },
+        "RegenStrength": {
+          "py_key": "regen_strength",
+          "start_byte": 1,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "cpp_key": "REGEN"
+        },
+        "SOCforDisplay": {
+          "py_key": "soc_percent",
+          "start_byte": 2,
+          "start_bit": 0,
+          "length_bits": 8,
+          "signed": false,
+          "unit": "%",
+          "cpp_key": "SOC"
+        }
       }
     }
   },
-
   "heartbeat_roles": [
-    { "name": "FUEL ", "description": "Fuel/SOC servo gauge" },
-    { "name": "AMPS ", "description": "Amps servo gauge" },
-    { "name": "TEMP ", "description": "Temperature servo gauge" },
-    { "name": "SPEED", "description": "Speedometer gauge" },
-    { "name": "BODY ", "description": "Body controller" },
-    { "name": "DASH ", "description": "Primary display Pi" },
-    { "name": "GPS  ", "description": "GPS display Pi" }
+    {
+      "name": "FUEL ",
+      "description": "Fuel/SOC servo gauge"
+    },
+    {
+      "name": "AMPS ",
+      "description": "Amps servo gauge"
+    },
+    {
+      "name": "TEMP ",
+      "description": "Temperature servo gauge"
+    },
+    {
+      "name": "SPEED",
+      "description": "Speedometer gauge"
+    },
+    {
+      "name": "BODY ",
+      "description": "Body controller"
+    },
+    {
+      "name": "DASH ",
+      "description": "Primary display Pi"
+    },
+    {
+      "name": "GPS  ",
+      "description": "GPS display Pi"
+    }
   ]
 }

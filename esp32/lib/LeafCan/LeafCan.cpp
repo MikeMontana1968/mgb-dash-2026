@@ -39,9 +39,9 @@ BatteryStatus LeafCan::decodeBatteryStatus(const uint8_t* data) {
 
 InverterTemps LeafCan::decodeInverterTemps(const uint8_t* data) {
     InverterTemps t;
-    t.motorTempC    = data[Leaf55A::MOTOR_TEMP_BYTE]    * Leaf55A::TEMP_FACTOR;
-    t.igbtTempC     = data[Leaf55A::IGBT_TEMP_BYTE]     * Leaf55A::TEMP_FACTOR;
-    t.inverterTempC = data[Leaf55A::INVERTER_TEMP_BYTE]  * Leaf55A::TEMP_FACTOR;
+    t.motorTempC    = data[Leaf55A::MOTOR_TEMP_BYTE]    * Leaf55A::MOTOR_TEMP_FACTOR;
+    t.igbtTempC     = data[Leaf55A::IGBT_TEMP_BYTE]     * Leaf55A::IGBT_TEMP_FACTOR;
+    t.inverterTempC = data[Leaf55A::INVERTER_TEMP_BYTE]  * Leaf55A::INVERTER_TEMP_FACTOR;
     ESP_LOGD(TAG, "0x55A Temps: motor=%.0fC igbt=%.0fC inverter=%.0fC", t.motorTempC, t.igbtTempC, t.inverterTempC);
     return t;
 }

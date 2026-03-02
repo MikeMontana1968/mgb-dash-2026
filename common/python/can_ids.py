@@ -48,6 +48,13 @@ BODY_FLAG_LEFT_TURN  = 1 << 5
 BODY_FLAG_RIGHT_TURN = 1 << 6
 BODY_FLAG_HAZARD     = 1 << 7
 
+# Body state bit flags (byte 1 of 0x710 payload)
+BODY_FLAG2_KEY_START      = 1 << 0
+BODY_FLAG2_KEY_ACCESSORY  = 1 << 1
+BODY_FLAG2_RUNNING_LIGHTS = 1 << 2
+BODY_FLAG2_HEADLIGHTS     = 1 << 3
+BODY_FLAG2_CHARGE_PORT    = 1 << 4
+
 # Gear values (byte 0 of 0x712 payload)
 GEAR_NEUTRAL = 0
 GEAR_UNKNOWN = 0xFF
