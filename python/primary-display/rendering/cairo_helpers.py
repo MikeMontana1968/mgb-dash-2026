@@ -34,15 +34,25 @@ def draw_freshness_bar(ctx: cairo.Context, x: float, y: float, height: float,
 
 def _draw_end_cap(ctx: cairo.Context, cx: float, cy: float,
                   inner_r: float, outer_r: float,
-                  angle: float, color: tuple):
-    """Draw a rounded end cap (filled circle) at the given angle."""
+                  angle: float, color: tuple,
+                  sweep: float = None):
+    """Draw a semicircle end cap at the given angle.
+
+    The flat edge aligns with the radial line; the curve extends forward
+    (in the arc-sweep direction).  If *sweep* is provided and the arc
+    length at mid-radius is less than the cap diameter, the cap is
+    skipped to avoid artifacts on very short arcs.
+    """
     mid_r = (inner_r + outer_r) / 2
     cap_r = (outer_r - inner_r) / 2
+    if sweep is not None and mid_r * sweep < cap_r * 2:
+        return
     cap_x = cx + mid_r * math.cos(angle)
     cap_y = cy + mid_r * math.sin(angle)
     ctx.set_source_rgba(*color)
     ctx.new_path()
-    ctx.arc(cap_x, cap_y, cap_r, 0, 2 * math.pi)
+    ctx.arc(cap_x, cap_y, cap_r, angle - math.pi / 2, angle + math.pi / 2)
+    ctx.close_path()
     ctx.fill()
 
 
@@ -78,7 +88,8 @@ def draw_arc_gauge(ctx: cairo.Context, cx: float, cy: float,
         ctx.arc_negative(cx, cy, inner_r, fill_end, start_angle)
         ctx.close_path()
         ctx.fill()
-        _draw_end_cap(ctx, cx, cy, inner_r, outer_r, fill_end, color)
+        _draw_end_cap(ctx, cx, cy, inner_r, outer_r, fill_end, color,
+                      sweep=fill_sweep)
 
 
 def draw_arc_fill(ctx: cairo.Context, cx: float, cy: float,
@@ -98,7 +109,8 @@ def draw_arc_fill(ctx: cairo.Context, cx: float, cy: float,
     ctx.close_path()
     ctx.fill()
     if round_end:
-        _draw_end_cap(ctx, cx, cy, inner_r, outer_r, end_angle, color)
+        _draw_end_cap(ctx, cx, cy, inner_r, outer_r, end_angle, color,
+                      sweep=sweep)
 
 
 def chord_half_width(y: float, center: float, radius: float) -> float:
