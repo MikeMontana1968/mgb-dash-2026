@@ -76,7 +76,7 @@ bool canSilenceMode = false;
 // Helper: Read GPIOs and build body flags with hazard detection
 // ═════════════════════════════════════════════════════════════════════
 void readGPIO(unsigned long now) {
-    // 12V signals through resistor dividers → active-high at GPIO
+    // 12V signals through resistor/voltage dividers → active-high at GPIO
     bool keyOn      = digitalRead(PIN_KEY_ON);
     bool keyStart   = digitalRead(PIN_KEY_START);
     bool keyAcc     = digitalRead(PIN_KEY_ACCESSORY);
@@ -256,7 +256,7 @@ void setup() {
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
 
-    // Digital inputs (13 channels via resistor dividers from 12V signals)
+    // Digital inputs (13 channels via resistor/voltage dividers from 12V signals)
     pinMode(PIN_KEY_ON, INPUT);
     pinMode(PIN_KEY_START, INPUT);
     pinMode(PIN_KEY_ACCESSORY, INPUT);

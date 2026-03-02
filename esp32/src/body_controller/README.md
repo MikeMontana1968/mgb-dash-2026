@@ -1,6 +1,6 @@
 # Body Controller
 
-Central sensor hub. Reads vehicle GPIO inputs (via resistor dividers from 12V signals), drives hall sensor speed measurement, estimates gear from motor RPM vs driveshaft RPM, persists odometer to NVS, and bridges to BLE for the phone app. ESP32 + TJA1050 CAN transceiver.
+Central sensor hub. Reads vehicle GPIO inputs (via resistor/voltage dividers from 12V signals), drives hall sensor speed measurement, estimates gear from motor RPM vs driveshaft RPM, persists odometer to NVS, and bridges to BLE for the phone app. ESP32 + TJA1050 CAN transceiver.
 
 <img src="../../../docs/images/body-controller.JPG" alt="Body controller" width="400">
 
@@ -11,19 +11,19 @@ Central sensor hub. Reads vehicle GPIO inputs (via resistor dividers from 12V si
 | MCU | ESP32-WROOM-32 DevKit | — | — | BLE built-in |
 | CAN Transceiver | TJA1050 | TWAI | TX→**GPIO12**, RX→**GPIO25** | Non-standard pins (not 5/4) |
 | Hall Effect Sensor | A3144 or OH137 | Interrupt | **GPIO35** | Driveshaft, 2 magnets/rev, pull-up |
-| Key On | Resistor divider | Digital In | **GPIO23** | 12V → 3.3V, active-high |
-| Key Start | Resistor divider | Digital In | **GPIO22** | 12V → 3.3V, active-high |
-| Key Accessory | Resistor divider | Digital In | **GPIO21** | 12V → 3.3V, active-high |
-| Left Turn | Resistor divider | Digital In | **GPIO19** | 12V → 3.3V, active-high |
-| Right Turn | Resistor divider | Digital In | **GPIO18** | 12V → 3.3V, active-high |
-| Hazard Switch | Resistor divider | Digital In | **GPIO17** | 12V → 3.3V, active-high |
-| Running Lights | Resistor divider | Digital In | **GPIO4** | 12V → 3.3V, active-high |
-| Headlights | Resistor divider | Digital In | **GPIO32** | 12V → 3.3V, active-high |
-| Brake | Resistor divider | Digital In | **GPIO26** | 12V → 3.3V, active-high |
-| Regen Active | Resistor divider | Digital In | **GPIO27** | 12V → 3.3V, active-high |
-| Fan Active | Resistor divider | Digital In | **GPIO14** | 12V → 3.3V, active-high |
-| Reverse Gear | Resistor divider | Digital In | **GPIO16** | 12V → 3.3V, active-high |
-| Charge Port | Resistor divider | Digital In | **GPIO5** | 12V → 3.3V, active-high |
+| Key On | Resistor/voltage divider | Digital In | **GPIO23** | 12V → 3.3V, active-high |
+| Key Start | Resistor/voltage divider | Digital In | **GPIO22** | 12V → 3.3V, active-high |
+| Key Accessory | Resistor/voltage divider | Digital In | **GPIO21** | 12V → 3.3V, active-high |
+| Left Turn | Resistor/voltage divider | Digital In | **GPIO19** | 12V → 3.3V, active-high |
+| Right Turn | Resistor/voltage divider | Digital In | **GPIO18** | 12V → 3.3V, active-high |
+| Hazard Switch | Resistor/voltage divider | Digital In | **GPIO17** | 12V → 3.3V, active-high |
+| Running Lights | Resistor/voltage divider | Digital In | **GPIO4** | 12V → 3.3V, active-high |
+| Headlights | Resistor/voltage divider | Digital In | **GPIO32** | 12V → 3.3V, active-high |
+| Brake | Resistor/voltage divider | Digital In | **GPIO26** | 12V → 3.3V, active-high |
+| Regen Active | Resistor/voltage divider | Digital In | **GPIO27** | 12V → 3.3V, active-high |
+| Fan Active | Resistor/voltage divider | Digital In | **GPIO14** | 12V → 3.3V, active-high |
+| Reverse Gear | Resistor/voltage divider | Digital In | **GPIO16** | 12V → 3.3V, active-high |
+| Charge Port | Resistor/voltage divider | Digital In | **GPIO5** | 12V → 3.3V, active-high |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
 
