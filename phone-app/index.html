@@ -2,27 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MGB Dash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>MGB DIAG</title>
     <link rel="manifest" href="manifest.json">
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #1a1a2e;
-            color: #e0e0e0;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 { color: #4fc3f7; }
-        .status { color: #888; margin-top: 40px; }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h1>MGB Dash</h1>
-    <p class="status">Web Bluetooth connection — not yet implemented.</p>
-    <!-- TODO: BLE connect button -->
-    <!-- TODO: Live vehicle data display (speed, SOC, gear, temps, odometer) -->
-    <!-- TODO: Service worker registration for PWA offline support -->
+    <!-- Header -->
+    <div id="header">
+        <span class="title">MGB DIAG</span>
+        <div class="mode-buttons">
+            <button id="btn-demo" class="mode-btn">DEMO</button>
+            <button id="btn-ble" class="mode-btn">BLE</button>
+        </div>
+        <span id="msg-rate" class="msg-rate">msgs: 0/s</span>
+    </div>
+
+    <!-- Signal grid (populated by ui.js) -->
+    <div id="signal-grid"></div>
+
+    <!-- Heartbeat bar (populated by ui.js) -->
+    <div id="heartbeat-bar"></div>
+
+    <!-- BLE status overlay -->
+    <div id="ble-status">
+        <div id="ble-msg" class="ble-msg">Connecting...</div>
+        <button id="ble-dismiss">Dismiss</button>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

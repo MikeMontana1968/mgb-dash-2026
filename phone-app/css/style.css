@@ -1,0 +1,344 @@
+/* MGB Dash 2026 — Phone Diagnostics PWA */
+
+:root {
+    --bg: #0a0a0f;
+    --bg-card: #12121a;
+    --bg-header: #16161f;
+    --border: #2a2a35;
+    --text-white: #ffffff;
+    --text-dim: #8c8c8c;
+    --text-label: #b3b3bf;
+    --group-header: #6680b3;
+    --cyan: #00d9e6;
+    --fresh: #33d94d;
+    --aging: #f2d926;
+    --stale: #f28c1a;
+    --dead: #e62626;
+    --never: #4d4d4d;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-white);
+    font-family: var(--mono);
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+}
+
+/* ── Header (fixed top) ─────────────────────────────────────── */
+
+#header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    z-index: 100;
+    gap: 12px;
+}
+
+#header .title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cyan);
+    white-space: nowrap;
+}
+
+#header .mode-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+#header .mode-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+#header .mode-btn.active {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    background: rgba(0, 217, 230, 0.08);
+}
+
+#header .mode-btn:hover:not(.active) {
+    border-color: var(--text-dim);
+    color: var(--text-label);
+}
+
+#header .msg-rate {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+/* ── Signal Grid (scrollable main) ──────────────────────────── */
+
+#signal-grid {
+    position: fixed;
+    top: 44px;
+    left: 0;
+    right: 0;
+    bottom: 56px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Two-column layout on wider screens */
+.grid-container {
+    display: flex;
+    gap: 8px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.grid-column {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ── Signal Group Cards ─────────────────────────────────────── */
+
+.signal-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.group-header .chevron {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-right: 6px;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 10px;
+}
+
+.signal-group.collapsed .chevron {
+    transform: rotate(-90deg);
+}
+
+.group-header .group-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--group-header);
+    letter-spacing: 0.5px;
+}
+
+.group-body {
+    padding: 0 4px 4px 4px;
+}
+
+.signal-group.collapsed .group-body {
+    display: none;
+}
+
+/* ── Signal Rows ────────────────────────────────────────────── */
+
+.signal-row {
+    display: flex;
+    align-items: baseline;
+    height: 18px;
+    line-height: 18px;
+    font-size: 12px;
+    padding: 0 4px;
+    gap: 0;
+}
+
+.sig-can {
+    width: 3ch;
+    color: var(--text-dim);
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.sig-age {
+    width: 3ch;
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 1ch;
+}
+
+.sig-val {
+    width: 8ch;
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 1ch;
+}
+
+.sig-label {
+    margin-left: 1ch;
+    color: var(--text-white);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Freshness color classes ────────────────────────────────── */
+
+.fresh  { color: var(--fresh); }
+.aging  { color: var(--aging); }
+.stale  { color: var(--stale); }
+.dead   { color: var(--dead); }
+.never  { color: var(--never); }
+
+.age-fresh { color: var(--fresh); }
+.age-dim   { color: var(--text-dim); }
+
+/* ── Heartbeat Bar (fixed bottom) ───────────────────────────── */
+
+#heartbeat-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: var(--bg-header);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 8px;
+    z-index: 100;
+    overflow-x: auto;
+}
+
+.hb-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+    padding: 0 4px;
+}
+
+.hb-dot-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hb-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--never);
+    flex-shrink: 0;
+}
+
+.hb-dot.fresh  { background: var(--fresh); }
+.hb-dot.aging  { background: var(--aging); }
+.hb-dot.stale  { background: var(--stale); }
+.hb-dot.dead   { background: var(--dead); }
+.hb-dot.never  { background: var(--never); }
+
+.hb-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.3px;
+}
+
+.hb-uptime {
+    font-size: 8px;
+    color: var(--text-dim);
+    margin-top: 1px;
+}
+
+/* ── BLE status overlay ─────────────────────────────────────── */
+
+#ble-status {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1px solid var(--cyan);
+    border-radius: 8px;
+    padding: 24px 32px;
+    text-align: center;
+    z-index: 200;
+    font-size: 13px;
+    color: var(--text-label);
+    max-width: 320px;
+}
+
+#ble-status.visible { display: block; }
+
+#ble-status .ble-msg { margin-bottom: 12px; }
+
+#ble-status button {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+/* Mobile: single column, compact */
+@media (max-width: 599px) {
+    .grid-container {
+        flex-direction: column;
+    }
+
+    .signal-row {
+        font-size: 11px;
+        height: 17px;
+        line-height: 17px;
+    }
+
+    #header .title { font-size: 13px; }
+
+    .hb-slot { min-width: 44px; }
+    .hb-label { font-size: 8px; }
+}
+
+/* Scrollbar styling */
+#signal-grid::-webkit-scrollbar {
+    width: 4px;
+}
+#signal-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+#signal-grid::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}

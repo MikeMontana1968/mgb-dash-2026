@@ -1,9 +1,17 @@
 {
-  "name": "MGB Dash",
-  "short_name": "MGB",
-  "description": "MGB EV Dashboard — Live vehicle data over Bluetooth",
+  "name": "MGB Diagnostics",
+  "short_name": "MGB DIAG",
+  "description": "MGB EV Dashboard — CAN bus diagnostics over Bluetooth",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#4fc3f7"
+  "orientation": "portrait",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100' rx='20'/><text x='50' y='58' text-anchor='middle' fill='%2300d9e6' font-family='monospace' font-size='22' font-weight='bold'>MGB</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }
