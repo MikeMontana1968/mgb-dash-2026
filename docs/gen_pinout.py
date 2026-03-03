@@ -54,16 +54,14 @@ ESP_ENVS = {
         "signals": {5: "CAN_TX", 4: "CAN_RX", 14: "LED_DATA", 27: "SERVO"},
     },
     "speedometer": {
-        "title": "Speedometer",
-        "subtitle": "CAN + stepper + servo + LED ring + eInk (SPI)",
+        "title": "Speedometer (ideaspark ESP32+OLED)",
+        "subtitle": "CAN + stepper + servo + LED ring + OLED (I2C, on-board)",
         "signals": {
             5: "CAN_TX", 4: "CAN_RX", 14: "LED_DATA", 27: "SERVO",
             25: "STEP_IN1", 26: "STEP_IN2", 32: "STEP_IN3", 33: "STEP_IN4",
             13: "STEP_HOME",
-            23: "EINK_MOSI", 18: "EINK_SCK",
-            17: "EINK_DC", 16: "EINK_RST", 2: "EINK_BUSY",
+            21: "OLED_SDA", 22: "OLED_SCL",
         },
-        "off_board": {15: "EINK_CS"},
     },
     "body_controller": {
         "title": "Body Controller",

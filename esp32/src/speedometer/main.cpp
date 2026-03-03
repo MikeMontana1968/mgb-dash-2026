@@ -5,15 +5,17 @@
  *   - 28BYJ-48 stepper needle (StepperWheel lib, cubic-eased)
  *   - Servo gear indicator disc (ServoGauge lib)
  *   - WS2812B LED ring (turn signals, hazards, ambient)
- *   - eInk odometer (future TODO)
+ *   - SSD1306 OLED odometer (128x64, I2C, integrated on ESP32 board)
  *
  * All speed/gear/odometer data comes from body controller via CAN —
  * no local sensor logic.
  */
 
 #include <Arduino.h>
+#include <Wire.h>
 #include <cmath>
 #include "esp_log.h"
+#include "Adafruit_SSD1306.h"
 #include "CanBus.h"
 #include "Heartbeat.h"
 #include "CanLog.h"
@@ -30,6 +32,14 @@ CanLog      canLog;
 LedRing     ledRing;
 ServoGauge  gearServo;
 StepperWheel stepperWheel;
+
+// ── OLED odometer (SSD1306 128x64, I2C) ──────────────────────────────
+static constexpr int OLED_WIDTH  = 128;
+static constexpr int OLED_HEIGHT = 64;
+Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);  // no dedicated RST pin on ideaspark board
+bool     oledReady     = false;
+double   odometerMiles = 0.0;
+bool     odometerDirty = true;   // redraw on first frame
 
 // ── CAN silence watchdog ────────────────────────────────────────────
 bool canMessageReceived = false;
@@ -79,7 +89,38 @@ static void wheelToRGB(uint8_t pos, uint8_t &r, uint8_t &g, uint8_t &b) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// Self-test: stepper sweep + LED chase + servo sweep
+// OLED odometer display
+// ═════════════════════════════════════════════════════════════════════
+static void oledDrawOdometer() {
+    if (!oledReady) return;
+    oled.clearDisplay();
+
+    // Format: "12345.6" — 1 decimal place
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.1f", odometerMiles);
+
+    oled.setTextColor(SSD1306_WHITE);
+
+    // Large odometer value centered
+    oled.setTextSize(3);
+    int16_t x1, y1;
+    uint16_t w, h;
+    oled.getTextBounds(buf, 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, (OLED_HEIGHT - h) / 2 - 6);
+    oled.print(buf);
+
+    // "MILES" label below
+    oled.setTextSize(1);
+    oled.getTextBounds("MILES", 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, OLED_HEIGHT - h - 2);
+    oled.print("MILES");
+
+    oled.display();
+    odometerDirty = false;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// Self-test: stepper sweep + LED chase + servo sweep + OLED test
 // ═════════════════════════════════════════════════════════════════════
 void runSelfTest() {
     canLog.log(LogLevel::LOG_INFO, LogEvent::SELF_TEST_START);
@@ -162,6 +203,24 @@ void runSelfTest() {
         delay(150);
     }
 
+    // ── Phase 6: OLED test pattern ──────────────────────────────────
+    if (oledReady) {
+        oled.clearDisplay();
+        oled.fillRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
+        oled.display();
+        delay(200);
+        oled.clearDisplay();
+        oled.setTextColor(SSD1306_WHITE);
+        oled.setTextSize(2);
+        int16_t x1, y1;
+        uint16_t w, h;
+        oled.getTextBounds("ODO OK", 0, 0, &x1, &y1, &w, &h);
+        oled.setCursor((OLED_WIDTH - w) / 2, (OLED_HEIGHT - h) / 2);
+        oled.print("ODO OK");
+        oled.display();
+        delay(500);
+    }
+
     gearServo.writeDirect(0);
     canLog.log(LogLevel::LOG_INFO, LogEvent::SELF_TEST_PASS);
     ESP_LOGI(TAG, "Self-test complete.");
@@ -235,6 +294,17 @@ void setup() {
     gearServo.setRange(0.0f, 90.0f);     // angle range for gear disc
     gearServo.setSmoothing(0.3f);         // snappy — gear changes are discrete
 
+    // ── OLED odometer (I2C, hardwired on board) ───────────────────
+    Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
+    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        oledReady = true;
+        oled.clearDisplay();
+        oled.display();
+        ESP_LOGI(TAG, "OLED init OK (128x64 @ 0x3C)");
+    } else {
+        ESP_LOGW(TAG, "OLED init FAILED — odometer display unavailable");
+    }
+
     // ── Self-test ───────────────────────────────────────────────────
     runSelfTest();
 
@@ -289,10 +359,16 @@ void loop() {
             break;
         }
 
-        // ── Odometer → future eInk display ──────────────────────────
-        case CAN_ID_BODY_ODOMETER:
-            // TODO: store for eInk update when driver is implemented
+        // ── Odometer → OLED display ──────────────────────────────────
+        case CAN_ID_BODY_ODOMETER: {
+            double miles;
+            memcpy(&miles, data, sizeof(double));
+            if (miles != odometerMiles) {
+                odometerMiles = miles;
+                odometerDirty = true;
+            }
             break;
+        }
 
         // ── GPS speed → future discrepancy check ────────────────────
         case CAN_ID_GPS_SPEED:
@@ -329,6 +405,9 @@ void loop() {
     gearServo.update();
     updateAnimations();
     ledRing.update();
+
+    // ── OLED odometer refresh (only when value changes) ───────────
+    if (odometerDirty) oledDrawOdometer();
 
     // ── CAN silence watchdog ────────────────────────────────────────
     if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {

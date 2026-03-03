@@ -24,7 +24,7 @@ CAN bus dashboard controller for a Nissan Leaf EV conversion in an MGB body. Sev
       │ ESP32   ││ ESP32   ││ ESP32 ││  ESP32    ││ ESP32 ││  Pi 4B  ││ Pi 3B   │
       │ TJA1050 ││ TJA1050 ││TJA1050││ TJA1050  ││TJA1050││USB2CAN  ││USB2CAN  │
       │ Servo   ││ Servo   ││ Servo ││ Stepper   ││ GPIO  ││3.4" DSI ││ 2" LCD  │
-      │ 24 LEDs ││ 24 LEDs ││24 LEDs││ eInk      ││ Hall  ││         ││ NEO-6M  │
+      │ 24 LEDs ││ 24 LEDs ││24 LEDs││ OLED      ││ Hall  ││         ││ NEO-6M  │
       │         ││         ││       ││ Servo     ││ BLE   ││         ││         │
       └─────────┘└─────────┘└───────┘│ LEDs      │└───┬───┘└─────────┘└─────────┘
                                      └───────────┘    │
@@ -58,7 +58,7 @@ Single shared bus. All devices sit directly on the Leaf EV-CAN. Custom dashboard
 | [Fuel Gauge](esp32/src/servo_gauge/README.md) | ESP32 + servo + 12 LEDs | `esp32/` env: `servo_fuel` | Battery SOC on 180° servo needle with LED ring |
 | [Amps Gauge](esp32/src/servo_gauge/README.md) | ESP32 + servo + 12 LEDs | `esp32/` env: `servo_amps` | Battery current (center-zero) with LED ring |
 | [Temp Gauge](esp32/src/servo_gauge/README.md) | ESP32 + servo + 12 LEDs | `esp32/` env: `servo_temp` | Battery/inverter temperature with LED ring |
-| [Speedometer](esp32/src/speedometer/README.md) | ESP32 + stepper + servo + eInk | `esp32/` env: `speedometer` | Slot-machine speed drum, gear indicator, odometer |
+| [Speedometer](esp32/src/speedometer/README.md) | ESP32+OLED + stepper + servo | `esp32/` env: `speedometer` | Slot-machine speed drum, gear indicator, OLED odometer |
 | [Body Controller](esp32/src/body_controller/README.md) | ESP32 + GPIO + hall sensor | `esp32/` env: `body_controller` | Sensor hub: speed, gear, odometer, BLE bridge |
 | [Primary Display](python/primary-display/README.md) | Pi 4B + 3.4" DSI LCD | `python/primary-display/` | Main dash screen: pycairo + pygame, 5 contexts |
 | [GPS Display](python/gps-display/README.md) | Pi 3B + 2" SPI LCD + NEO-6M | `python/gps-display/` | 24hr clock dial, sun/moon arcs, ambient light |
@@ -161,7 +161,7 @@ python python/tools/codegen.py
 
 ### Not Yet Implemented
 
-- eInk odometer driver (speedometer has TODO placeholder)
+- OLED odometer hardware testing (driver implemented, needs on-board verification)
 - Primary Display Phase 3 (ReplaySource)
 - Phone app BLE and UI logic
 - Tool scripts (stubs only — no python-can integration)
