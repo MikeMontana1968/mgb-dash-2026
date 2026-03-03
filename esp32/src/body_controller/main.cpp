@@ -60,13 +60,13 @@ static constexpr unsigned long HAZARD_WINDOW_MS = 50;
 
 // ── GPIO / body flags ───────────────────────────────────────────────
 uint8_t bodyFlags  = 0;  // byte 0 of BODY_STATE
-uint8_t bodyFlags2 = 0;  // byte 1 of BODY_STATE
-bool prevKeyOn = false;
+uint8_t bodyFlags2 = 0;  // byte 1 of BODY_STATE (all deferred — always 0)
 
 // ── Timing ──────────────────────────────────────────────────────────
 unsigned long lastStateMs = 0;   // 10 Hz: 0x710 + 0x711
 unsigned long lastGearMs  = 0;   // 2 Hz:  0x712
 unsigned long lastOdoMs   = 0;   // 1 Hz:  0x713
+unsigned long lastDebugMs = 0;   // 2s:    GPIO debug dump
 
 // ── CAN silence watchdog ────────────────────────────────────────────
 bool canMessageReceived = false;
@@ -76,71 +76,41 @@ bool canSilenceMode = false;
 // Helper: Read GPIOs and build body flags with hazard detection
 // ═════════════════════════════════════════════════════════════════════
 void readGPIO(unsigned long now) {
-    // 12V signals through resistor/voltage dividers → active-high at GPIO
-    bool keyOn      = digitalRead(PIN_KEY_ON);
-    bool keyStart   = digitalRead(PIN_KEY_START);
-    bool keyAcc     = digitalRead(PIN_KEY_ACCESSORY);
-    bool brake      = digitalRead(PIN_BRAKE);
-    bool regen      = digitalRead(PIN_REGEN);
-    bool fan        = digitalRead(PIN_FAN);
-    bool reverse    = digitalRead(PIN_REVERSE);
-    bool left       = digitalRead(PIN_LEFT_TURN);
-    bool right      = digitalRead(PIN_RIGHT_TURN);
-    bool hazard     = digitalRead(PIN_HAZARD);
-    bool runLights  = digitalRead(PIN_RUNNING_LIGHTS);
-    bool headlights = digitalRead(PIN_HEADLIGHTS);
-    bool chargePort = digitalRead(PIN_CHARGE_PORT);
+    // 5 confirmed signals (2026-03-03 bench discovery)
+    bool brake   = digitalRead(PIN_BRAKE);
+    bool reverse = digitalRead(PIN_REVERSE);
+    bool regen   = digitalRead(PIN_REGEN);
+    bool left    = digitalRead(PIN_LEFT_TURN);
+    bool right   = digitalRead(PIN_RIGHT_TURN);
 
     // ── Byte 0 flags ────────────────────────────────────────────────
     bodyFlags = 0;
-    if (keyOn)   bodyFlags |= BODY_FLAG_KEY_ON;
     if (brake)   bodyFlags |= BODY_FLAG_BRAKE;
     if (regen)   bodyFlags |= BODY_FLAG_REGEN;
-    if (fan)     bodyFlags |= BODY_FLAG_FAN;
     if (reverse) bodyFlags |= BODY_FLAG_REVERSE;
 
-    // Hazard: dedicated input takes priority; fall back to timing detection
-    if (hazard) {
-        bodyFlags |= BODY_FLAG_HAZARD;
-    } else {
-        // Track off→on transitions for timing-based hazard detection
-        if (left && !leftActive)   leftOnMs = now;
-        if (right && !rightActive) rightOnMs = now;
+    // Hazard: timing-based detection from LEFT+RIGHT simultaneity
+    if (left && !leftActive)   leftOnMs = now;
+    if (right && !rightActive) rightOnMs = now;
 
-        if (left && right) {
-            unsigned long delta = (leftOnMs > rightOnMs)
-                ? (leftOnMs - rightOnMs) : (rightOnMs - leftOnMs);
-            if (delta <= HAZARD_WINDOW_MS) {
-                bodyFlags |= BODY_FLAG_HAZARD;
-            } else {
-                bodyFlags |= BODY_FLAG_LEFT_TURN;
-                bodyFlags |= BODY_FLAG_RIGHT_TURN;
-            }
+    if (left && right) {
+        unsigned long delta = (leftOnMs > rightOnMs)
+            ? (leftOnMs - rightOnMs) : (rightOnMs - leftOnMs);
+        if (delta <= HAZARD_WINDOW_MS) {
+            bodyFlags |= BODY_FLAG_HAZARD;
         } else {
-            if (left)  bodyFlags |= BODY_FLAG_LEFT_TURN;
-            if (right) bodyFlags |= BODY_FLAG_RIGHT_TURN;
+            bodyFlags |= BODY_FLAG_LEFT_TURN;
+            bodyFlags |= BODY_FLAG_RIGHT_TURN;
         }
+    } else {
+        if (left)  bodyFlags |= BODY_FLAG_LEFT_TURN;
+        if (right) bodyFlags |= BODY_FLAG_RIGHT_TURN;
     }
     leftActive  = left;
     rightActive = right;
 
-    // ── Byte 1 flags ────────────────────────────────────────────────
+    // ── Byte 1 flags — all deferred (not wired this iteration) ────
     bodyFlags2 = 0;
-    if (keyStart)   bodyFlags2 |= BODY_FLAG2_KEY_START;
-    if (keyAcc)     bodyFlags2 |= BODY_FLAG2_KEY_ACCESSORY;
-    if (runLights)  bodyFlags2 |= BODY_FLAG2_RUNNING_LIGHTS;
-    if (headlights) bodyFlags2 |= BODY_FLAG2_HEADLIGHTS;
-    if (chargePort) bodyFlags2 |= BODY_FLAG2_CHARGE_PORT;
-
-    // ── Key on/off edge detection ───────────────────────────────────
-    if (keyOn && !prevKeyOn) {
-        canLog.log(LogLevel::LOG_INFO, LogEvent::KEY_ON);
-        ESP_LOGI(TAG, "Key ON");
-    } else if (!keyOn && prevKeyOn) {
-        canLog.log(LogLevel::LOG_INFO, LogEvent::KEY_OFF);
-        ESP_LOGI(TAG, "Key OFF");
-    }
-    prevKeyOn = keyOn;
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -176,8 +146,8 @@ void computeSpeed(unsigned long nowMs) {
     prevPulseCount = pulses;
     prevSpeedMs = nowMs;
 
-    ESP_LOGI(TAG, "Speed: %.1f mph, pulses: %lu, odo: %.1f mi",
-             speedMph, (unsigned long)pulseDelta, odometerMiles);
+    // ESP_LOGI(TAG, "Speed: %.1f mph, pulses: %lu, odo: %.1f mi",
+    //          speedMph, (unsigned long)pulseDelta, odometerMiles);
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -256,20 +226,12 @@ void setup() {
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
 
-    // Digital inputs (13 channels via resistor/voltage dividers from 12V signals)
-    pinMode(PIN_KEY_ON, INPUT);
-    pinMode(PIN_KEY_START, INPUT);
-    pinMode(PIN_KEY_ACCESSORY, INPUT);
+    // Digital inputs — 5 confirmed signals (2026-03-03 bench discovery)
+    pinMode(PIN_BRAKE, INPUT);
+    pinMode(PIN_REVERSE, INPUT);
+    pinMode(PIN_REGEN, INPUT);
     pinMode(PIN_LEFT_TURN, INPUT);
     pinMode(PIN_RIGHT_TURN, INPUT);
-    pinMode(PIN_HAZARD, INPUT);
-    pinMode(PIN_RUNNING_LIGHTS, INPUT);
-    pinMode(PIN_HEADLIGHTS, INPUT);
-    pinMode(PIN_BRAKE, INPUT);
-    pinMode(PIN_REGEN, INPUT);
-    pinMode(PIN_FAN, INPUT);
-    pinMode(PIN_REVERSE, INPUT);
-    pinMode(PIN_CHARGE_PORT, INPUT);
 
     // Hall sensor (interrupt-driven)
     pinMode(PIN_HALL_SENSOR, INPUT_PULLUP);
@@ -292,6 +254,19 @@ void setup() {
 
     canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
     ESP_LOGI(TAG, "Init complete.");
+
+    // ── Debug: dump pin assignments (confirmed signals only) ────────
+    ESP_LOGI(TAG, "=== PIN ASSIGNMENTS ===");
+    ESP_LOGI(TAG, "CAN_TX      = GPIO%d", PIN_CAN_TX);
+    ESP_LOGI(TAG, "CAN_RX      = GPIO%d", PIN_CAN_RX);
+    ESP_LOGI(TAG, "HALL_SENSOR = GPIO%d", PIN_HALL_SENSOR);
+    ESP_LOGI(TAG, "BRAKE       = GPIO%d", PIN_BRAKE);
+    ESP_LOGI(TAG, "REVERSE     = GPIO%d", PIN_REVERSE);
+    ESP_LOGI(TAG, "REGEN       = GPIO%d", PIN_REGEN);
+    ESP_LOGI(TAG, "LEFT_TURN   = GPIO%d", PIN_LEFT_TURN);
+    ESP_LOGI(TAG, "RIGHT_TURN  = GPIO%d", PIN_RIGHT_TURN);
+    ESP_LOGI(TAG, "LED_DATA    = GPIO%d", PIN_LED_DATA);
+    ESP_LOGI(TAG, "=======================");
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -346,8 +321,8 @@ void loop() {
         lastGearMs = now;
 
         estimateGear();
-        ESP_LOGI(TAG, "Gear: %u, motorRPM: %d, speed: %.1f mph",
-                 currentGear, motorRpm, speedMph);
+        // ESP_LOGI(TAG, "Gear: %u, motorRPM: %d, speed: %.1f mph",
+        //          currentGear, motorRpm, speedMph);
 
         // Broadcast BODY_GEAR (0x712)
         uint8_t gearPayload[8] = {};
@@ -367,6 +342,22 @@ void loop() {
         canBus.safeTransmit(CAN_ID_BODY_ODOMETER, odoPayload, 8);
 
         persistOdoIfNeeded();
+    }
+
+    // ── 0.5 Hz: GPIO debug dump ─────────────────────────────────────
+    if (now - lastDebugMs >= 2000) {
+        lastDebugMs = now;
+        #define S(pin) (digitalRead(pin) ? "*" : "_")
+        ESP_LOGI(TAG,
+            "GPIO%-2d BRAKE %s | GPIO%-2d REVERSE %s | GPIO%-2d REGEN %s | "
+            "GPIO%-2d LEFT %s | GPIO%-2d RIGHT %s | GPIO%-2d HALL %s",
+            PIN_BRAKE,       S(PIN_BRAKE),
+            PIN_REVERSE,     S(PIN_REVERSE),
+            PIN_REGEN,       S(PIN_REGEN),
+            PIN_LEFT_TURN,   S(PIN_LEFT_TURN),
+            PIN_RIGHT_TURN,  S(PIN_RIGHT_TURN),
+            PIN_HALL_SENSOR, S(PIN_HALL_SENSOR));
+        #undef S
     }
 
     // ── CAN silence watchdog ────────────────────────────────────────

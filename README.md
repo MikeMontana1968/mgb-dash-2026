@@ -150,7 +150,7 @@ python python/tools/codegen.py
 
 | Module | Status | Notes |
 |--------|--------|-------|
-| **Body Controller** | Loop complete | GPIO reading, hazard state machine, hall sensor speed, gear estimation, odometer/NVS, CAN broadcast (0x710–0x713), CAN receive (0x1DA, 0x730) |
+| **Body Controller** | Bench-tested | GPIO signals confirmed (bench 2026-03-03), CAN broadcast live (0x710–0x713), hall sensor, gear estimation, odometer/NVS, hazard timing detection |
 | **Servo Gauges (x3)** | Loop complete | CAN decode per role, servo mapping, LED ring warnings, turn signal/hazard animations, ambient light, stale data detection |
 | **Speedometer** | Loop complete | Stepper needle (CAN-driven), servo gear indicator, turn signal/hazard LEDs, ambient light, self-test |
 | **LeafCan decoder** | Complete | All 9 Leaf + Resolve CAN messages decoded |
@@ -181,4 +181,6 @@ python python/tools/codegen.py
 - **Primary display (Pi 4B)** — boots reliably on HDMI after reboot. Fixed race condition: service now waits for X server readiness via `xset q` polling before starting pygame. Display engine selects HDMI over DSI (skips 800x800 DSI panel). Starts in idle context, listening on CAN bus for real data.
 - **CAN bus on primary Pi** — created missing `/etc/network/interfaces.d/can0` config. Interface now comes up at 500 kbps with txqueuelen 1000 on boot.
 - **PlatformIO build** — eliminated PIN_CAN_TX/PIN_CAN_RX/PIN_SERVO macro redefinition warnings across all 5 environments by extracting `[servo_pins]` section in platformio.ini.
+- **Body controller bench-tested** — flashed and live on CAN bus. Signal discovery: prototype pin assignments were wrong for new wiring. Confirmed 5 signals (BRAKE=GPIO23, REVERSE=GPIO22, REGEN=GPIO21, LEFT_TURN=GPIO27, RIGHT_TURN=GPIO18) + HALL_SENSOR=GPIO35. 8 deferred signals commented out (KEY_ON, KEY_START, KEY_ACCESSORY, HAZARD, RUNNING_LIGHTS, HEADLIGHTS, FAN, CHARGE_PORT). CAN messages 0x710–0x713 broadcasting correctly. GPIO27 LEFT_TURN not reporting correctly — needs investigation.
+- **GPS display blank-screen issue** — LCD backlight stays on but display goes blank after some time. Service still running, logs clean, CAN data still broadcasting. Suspected SPI wedge. Parked for now.
 - **Pending** — CAN_H/CAN_L physical wiring between the two Pi USB2CAN adapters (both individually confirmed working). Waveshare 3.4" DSI display needs 12cm cable (current 160mm cable has wrong contact orientation).
