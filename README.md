@@ -167,3 +167,18 @@ python python/tools/codegen.py
 - Tool scripts (stubs only — no python-can integration)
 - CI/CD, testing infrastructure, git hooks
 - Hardware integration testing
+
+---
+
+## Progress
+
+### 2026-03-03 — Hardware bring-up session
+
+- **Speedometer ESP32** — fully operational on bench. Stepper homes via optical interrupter, servo self-test runs, OLED diagnostic display shows state/MPH/gear/CAN stats, 1Hz LED heartbeat. Listens for CAN messages (0x710–0x713, 0x720, 0x726, 0x730).
+- **Speedometer pinout** — remapped to ideaspark ESP32+OLED board. All 9 active signals on left side: CAN TX/RX adjacent (GPIO32/35), stepper IN1–IN4 consecutive matching ULN2003 header order (GPIO33/25/26/27), home sensor on GPIO34, servo on GPIO13. Pinout diagram regenerated.
+- **OLED diagnostic display** — two-zone layout on integrated SSD1306 (128x64 I2C). Yellow band: state word (INIT/HOME/TEST/IDLE/RUN/ERR) + CAN RX count. Blue zone: MPH, gear, odometer, stepper position, firmware version. Splash screen at boot with role name + version for 2 seconds.
+- **GPS display (Pi 3B)** — LCD working (Waveshare 1.28" GC9A01 round LCD, SPI). Service running: GPS fix acquired, 24hr clock rendering, CAN broadcasting on can0. Fixed missing `timezonefinder` dependency, restored deleted working tree files, fixed venv permissions.
+- **Primary display (Pi 4B)** — boots reliably on HDMI after reboot. Fixed race condition: service now waits for X server readiness via `xset q` polling before starting pygame. Display engine selects HDMI over DSI (skips 800x800 DSI panel). Starts in idle context, listening on CAN bus for real data.
+- **CAN bus on primary Pi** — created missing `/etc/network/interfaces.d/can0` config. Interface now comes up at 500 kbps with txqueuelen 1000 on boot.
+- **PlatformIO build** — eliminated PIN_CAN_TX/PIN_CAN_RX/PIN_SERVO macro redefinition warnings across all 5 environments by extracting `[servo_pins]` section in platformio.ini.
+- **Pending** — CAN_H/CAN_L physical wiring between the two Pi USB2CAN adapters (both individually confirmed working). Waveshare 3.4" DSI display needs 12cm cable (current 160mm cable has wrong contact orientation).

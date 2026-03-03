@@ -30,6 +30,8 @@ class DisplayEngine:
         self._running = False
 
     def run(self):
+        import time as _time
+
         is_linux = sys.platform != "win32"
         headless = is_linux and not os.environ.get("DISPLAY")
 
@@ -37,22 +39,39 @@ class DisplayEngine:
         if headless:
             os.environ["SDL_VIDEODRIVER"] = "kmsdrm"
 
-        pygame.init()
-
         # Fullscreen on Linux: always (kmsdrm needs it, Xwayland needs it for focus)
         flags = pygame.FULLSCREEN | pygame.NOFRAME if is_linux else 0
 
-        try:
-            screen = pygame.display.set_mode((self._width, self._height), flags)
-        except pygame.error as e:
-            if is_linux:
-                logger.warning("Display init failed (%s), falling back to dummy driver", e)
-                pygame.quit()
-                os.environ["SDL_VIDEODRIVER"] = "dummy"
+        # Retry display init — X server may not be ready at boot
+        screen = None
+        for attempt in range(1, 11):
+            try:
                 pygame.init()
-                screen = pygame.display.set_mode((self._width, self._height))
-            else:
-                raise
+                # Find the target display index (prefer HDMI over DSI)
+                target_display = self._find_hdmi_display() if is_linux else 0
+                logger.info("Display init attempt %d (flags=0x%x, display=%d)",
+                            attempt, flags, target_display)
+                screen = pygame.display.set_mode(
+                    (self._width, self._height), flags,
+                    display=target_display)
+                logger.info("Display opened on driver: %s (display %d)",
+                            pygame.display.get_driver(), target_display)
+                break
+            except pygame.error as e:
+                pygame.quit()
+                if attempt < 10:
+                    logger.warning("Display init attempt %d failed (%s), "
+                                   "retrying in 2s...", attempt, e)
+                    _time.sleep(2)
+                elif is_linux:
+                    logger.warning("All display attempts failed, "
+                                   "falling back to dummy driver")
+                    os.environ["SDL_VIDEODRIVER"] = "dummy"
+                    pygame.init()
+                    screen = pygame.display.set_mode(
+                        (self._width, self._height))
+                else:
+                    raise
         stamp = datetime.now().strftime("%a-%d %H:%M")
         pygame.display.set_caption(f"MGB Dash 2026 — {stamp}")
         clock = pygame.time.Clock()
@@ -132,6 +151,29 @@ class DisplayEngine:
         finally:
             pygame.quit()
             logger.info("Display engine stopped")
+
+    @staticmethod
+    def _find_hdmi_display():
+        """Find the SDL display index for an HDMI output.
+
+        Iterates SDL displays and picks the first non-800x800 display,
+        since the DSI panel is 800x800 and we want HDMI.  Falls back to 0.
+        """
+        try:
+            num = pygame.display.get_num_displays()
+            logger.info("SDL sees %d display(s)", num)
+            for i in range(num):
+                try:
+                    r = pygame.display.get_desktop_sizes()[i]
+                    logger.info("  display %d: %dx%d", i, r[0], r[1])
+                    # DSI panel is exactly 800x800 — skip it
+                    if r != (800, 800):
+                        return i
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning("Display enumeration failed: %s", e)
+        return 0
 
     def stop(self):
         self._running = False
