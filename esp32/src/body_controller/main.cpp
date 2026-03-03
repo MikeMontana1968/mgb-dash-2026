@@ -146,8 +146,8 @@ void computeSpeed(unsigned long nowMs) {
     prevPulseCount = pulses;
     prevSpeedMs = nowMs;
 
-    // ESP_LOGI(TAG, "Speed: %.1f mph, pulses: %lu, odo: %.1f mi",
-    //          speedMph, (unsigned long)pulseDelta, odometerMiles);
+    ESP_LOGI(TAG, "Speed: %.1f mph, pulses: %lu, odo: %.1f mi",
+             speedMph, (unsigned long)pulseDelta, odometerMiles);
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -321,8 +321,8 @@ void loop() {
         lastGearMs = now;
 
         estimateGear();
-        // ESP_LOGI(TAG, "Gear: %u, motorRPM: %d, speed: %.1f mph",
-        //          currentGear, motorRpm, speedMph);
+        ESP_LOGI(TAG, "Gear: %u, motorRPM: %d, speed: %.1f mph",
+                 currentGear, motorRpm, speedMph);
 
         // Broadcast BODY_GEAR (0x712)
         uint8_t gearPayload[8] = {};
