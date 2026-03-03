@@ -39,7 +39,25 @@ static constexpr int OLED_HEIGHT = 64;
 Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);  // no dedicated RST pin on ideaspark board
 bool     oledReady     = false;
 double   odometerMiles = 0.0;
-bool     odometerDirty = true;   // redraw on first frame
+
+// ── Diagnostic state machine ────────────────────────────────────────
+enum DiagState { STATE_INIT, STATE_HOME, STATE_TEST, STATE_IDLE, STATE_RUN, STATE_ERR };
+static const char* const STATE_NAMES[] = { "INIT", "HOME", "TEST", "IDLE", "RUN", "ERR" };
+DiagState diagState = STATE_INIT;
+
+// ── Tracked CAN values for diagnostics ──────────────────────────────
+int      currentMPH  = 0;
+uint8_t  currentGear = GEAR_NEUTRAL;
+uint32_t canRxCount  = 0;
+
+// ── OLED refresh timer ──────────────────────────────────────────────
+unsigned long lastOledRefreshMs = 0;
+static constexpr unsigned long OLED_REFRESH_MS = 250;
+
+// ── Onboard LED heartbeat (GPIO2, 1 Hz) ─────────────────────────────
+static constexpr int PIN_ONBOARD_LED = 2;
+unsigned long lastLedToggleMs = 0;
+bool onboardLedState = false;
 
 // ── CAN silence watchdog ────────────────────────────────────────────
 bool canMessageReceived = false;
@@ -89,34 +107,95 @@ static void wheelToRGB(uint8_t pos, uint8_t &r, uint8_t &g, uint8_t &b) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// OLED odometer display
+// OLED splash screen (role + version, shown at boot for 2 seconds)
 // ═════════════════════════════════════════════════════════════════════
-static void oledDrawOdometer() {
+static void oledDrawSplash() {
     if (!oledReady) return;
     oled.clearDisplay();
-
-    // Format: "12345.6" — 1 decimal place
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.1f", odometerMiles);
-
     oled.setTextColor(SSD1306_WHITE);
 
-    // Large odometer value centered
-    oled.setTextSize(3);
+    // Role name in yellow zone (y=0, size 2 = 16px, fits perfectly)
+    oled.setTextSize(2);
     int16_t x1, y1;
     uint16_t w, h;
-    oled.getTextBounds(buf, 0, 0, &x1, &y1, &w, &h);
-    oled.setCursor((OLED_WIDTH - w) / 2, (OLED_HEIGHT - h) / 2 - 6);
-    oled.print(buf);
+    oled.getTextBounds(GAUGE_ROLE_NAME, 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, 0);
+    oled.print(GAUGE_ROLE_NAME);
 
-    // "MILES" label below
+    // Version in blue zone (centered)
+    char verBuf[24];
+    snprintf(verBuf, sizeof(verBuf), "v%d.%s.%.7s",
+             VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
     oled.setTextSize(1);
-    oled.getTextBounds("MILES", 0, 0, &x1, &y1, &w, &h);
-    oled.setCursor((OLED_WIDTH - w) / 2, OLED_HEIGHT - h - 2);
-    oled.print("MILES");
+    oled.getTextBounds(verBuf, 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, 30);
+    oled.print(verBuf);
 
     oled.display();
-    odometerDirty = false;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// OLED diagnostic display (two-zone layout)
+//   Yellow band (y=0-15):  state word + CAN rx count
+//   Blue zone  (y=16-63):  MPH, gear, odometer, version
+// ═════════════════════════════════════════════════════════════════════
+static void oledDrawDiagnostics() {
+    if (!oledReady) return;
+    oled.clearDisplay();
+    oled.setTextColor(SSD1306_WHITE);
+
+    // ── Yellow zone (0-15): state name (size 2) + rx count (size 1) ──
+    oled.setTextSize(2);
+    oled.setCursor(0, 0);
+    oled.print(STATE_NAMES[diagState]);
+
+    // CAN rx count — right-aligned, size 1, vertically centered in yellow
+    char rxBuf[12];
+    snprintf(rxBuf, sizeof(rxBuf), "%lu", (unsigned long)canRxCount);
+    oled.setTextSize(1);
+    int rxLen = strlen(rxBuf) * 6;
+    oled.setCursor(OLED_WIDTH - rxLen, 4);
+    oled.print(rxBuf);
+
+    // ── Blue zone (16-63): diagnostic values ─────────────────────────
+    char buf[22];
+
+    // Line 1 (y=18): MPH + Gear
+    const char* gearStr;
+    if (lastBodyFlags & BODY_FLAG_REVERSE) {
+        gearStr = "R";
+    } else {
+        switch (currentGear) {
+            case GEAR_1: gearStr = "1"; break;
+            case GEAR_2: gearStr = "2"; break;
+            case GEAR_3: gearStr = "3"; break;
+            case GEAR_4: gearStr = "4"; break;
+            default:     gearStr = "N"; break;
+        }
+    }
+    snprintf(buf, sizeof(buf), "MPH %-3d    GEAR %s", currentMPH, gearStr);
+    oled.setCursor(0, 18);
+    oled.print(buf);
+
+    // Line 2 (y=28): Odometer
+    snprintf(buf, sizeof(buf), "ODO %.1f mi", odometerMiles);
+    oled.setCursor(0, 28);
+    oled.print(buf);
+
+    // Line 3 (y=40): Stepper status
+    snprintf(buf, sizeof(buf), "NEEDLE %d MPH %s",
+             stepperWheel.getCurrentMPH(),
+             stepperWheel.isCalibrated() ? "CAL" : "UNCAL");
+    oled.setCursor(0, 40);
+    oled.print(buf);
+
+    // Line 4 (y=54): Version
+    snprintf(buf, sizeof(buf), "v%d.%s.%.7s",
+             VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
+    oled.setCursor(0, 54);
+    oled.print(buf);
+
+    oled.display();
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -214,9 +293,9 @@ void runSelfTest() {
         oled.setTextSize(2);
         int16_t x1, y1;
         uint16_t w, h;
-        oled.getTextBounds("ODO OK", 0, 0, &x1, &y1, &w, &h);
+        oled.getTextBounds("DIAG OK", 0, 0, &x1, &y1, &w, &h);
         oled.setCursor((OLED_WIDTH - w) / 2, (OLED_HEIGHT - h) / 2);
-        oled.print("ODO OK");
+        oled.print("DIAG OK");
         oled.display();
         delay(500);
     }
@@ -263,6 +342,10 @@ static void updateAnimations() {
 void setup() {
     Serial.begin(115200);
 
+    // ── Onboard LED (activity heartbeat) ─────────────────────────────
+    pinMode(PIN_ONBOARD_LED, OUTPUT);
+    digitalWrite(PIN_ONBOARD_LED, LOW);
+
     char versionStr[48];
     snprintf(versionStr, sizeof(versionStr), "%s v%d.%s.%s",
              GAUGE_ROLE_NAME, VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
@@ -275,7 +358,19 @@ void setup() {
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
     ledRing.init(PIN_LED_DATA, LED_COUNT);
 
+    // ── OLED init + splash screen ────────────────────────────────────
+    Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
+    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        oledReady = true;
+        ESP_LOGI(TAG, "OLED init OK (128x64 @ 0x3C)");
+        oledDrawSplash();
+        delay(2000);
+    } else {
+        ESP_LOGW(TAG, "OLED init FAILED — diagnostic display unavailable");
+    }
+
     // ── Stepper needle ──────────────────────────────────────────────
+    diagState = STATE_HOME;
     stepperWheel.init(PIN_STEPPER_IN1, PIN_STEPPER_IN2,
                       PIN_STEPPER_IN3, PIN_STEPPER_IN4,
                       PIN_STEPPER_HOME);
@@ -294,23 +389,14 @@ void setup() {
     gearServo.setRange(0.0f, 90.0f);     // angle range for gear disc
     gearServo.setSmoothing(0.3f);         // snappy — gear changes are discrete
 
-    // ── OLED odometer (I2C, hardwired on board) ───────────────────
-    Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
-    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        oledReady = true;
-        oled.clearDisplay();
-        oled.display();
-        ESP_LOGI(TAG, "OLED init OK (128x64 @ 0x3C)");
-    } else {
-        ESP_LOGW(TAG, "OLED init FAILED — odometer display unavailable");
-    }
-
     // ── Self-test ───────────────────────────────────────────────────
+    diagState = STATE_TEST;
     runSelfTest();
 
     // ── Park gear servo at neutral ──────────────────────────────────
     gearServo.setAngle(GEAR_ANGLES[GEAR_NEUTRAL]);
 
+    diagState = STATE_IDLE;
     canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
     ESP_LOGI(TAG, "Init complete.");
 }
@@ -329,6 +415,7 @@ void loop() {
     uint8_t  len;
     while (canBus.receive(id, data, len)) {
         canMessageReceived = true;
+        canRxCount++;
 
         switch (id) {
 
@@ -336,13 +423,15 @@ void loop() {
         case CAN_ID_BODY_SPEED: {
             double mph;
             memcpy(&mph, data, sizeof(double));
-            stepperWheel.moveToMPH((int)mph);
+            currentMPH = (int)mph;
+            stepperWheel.moveToMPH(currentMPH);
             break;
         }
 
         // ── Gear → servo indicator disc ─────────────────────────────
         case CAN_ID_BODY_GEAR: {
             uint8_t gear = data[0];
+            currentGear = gear;
             int angle;
             if (gear == GEAR_UNKNOWN) {
                 angle = GEAR_ANGLE_UNKNOWN;
@@ -359,14 +448,11 @@ void loop() {
             break;
         }
 
-        // ── Odometer → OLED display ──────────────────────────────────
+        // ── Odometer ─────────────────────────────────────────────────
         case CAN_ID_BODY_ODOMETER: {
             double miles;
             memcpy(&miles, data, sizeof(double));
-            if (miles != odometerMiles) {
-                odometerMiles = miles;
-                odometerDirty = true;
-            }
+            odometerMiles = miles;
             break;
         }
 
@@ -406,13 +492,30 @@ void loop() {
     updateAnimations();
     ledRing.update();
 
-    // ── OLED odometer refresh (only when value changes) ───────────
-    if (odometerDirty) oledDrawOdometer();
+    // ── State tracking ───────────────────────────────────────────────
+    if (canMessageReceived && diagState == STATE_IDLE) {
+        diagState = STATE_RUN;
+    }
+
+    // ── OLED diagnostic refresh (periodic) ───────────────────────────
+    unsigned long now = millis();
+    if (now - lastOledRefreshMs >= OLED_REFRESH_MS) {
+        lastOledRefreshMs = now;
+        oledDrawDiagnostics();
+    }
+
+    // ── Onboard LED heartbeat (1 Hz toggle) ──────────────────────────
+    if (now - lastLedToggleMs >= 500) {
+        lastLedToggleMs = now;
+        onboardLedState = !onboardLedState;
+        digitalWrite(PIN_ONBOARD_LED, onboardLedState ? HIGH : LOW);
+    }
 
     // ── CAN silence watchdog ────────────────────────────────────────
     if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {
         if (!canSilenceMode) {
             canSilenceMode = true;
+            diagState = STATE_ERR;
             ledRing.startBluePulse();
             canLog.log(LogLevel::LOG_WARN, LogEvent::CAN_SILENCE);
             ESP_LOGW(TAG, "CAN silence — entering fault mode");
@@ -420,6 +523,7 @@ void loop() {
     }
     if (canMessageReceived && canSilenceMode) {
         canSilenceMode = false;
+        diagState = STATE_RUN;
         ledRing.stopBluePulse();
         canLog.log(LogLevel::LOG_INFO, LogEvent::BUS_RECOVERED);
         ESP_LOGI(TAG, "CAN traffic resumed");
