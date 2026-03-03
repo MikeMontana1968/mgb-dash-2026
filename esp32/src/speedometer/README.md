@@ -7,11 +7,11 @@ Stepper-motor slot-machine speed display with servo gear indicator, OLED odomete
 | Component | Part / Model | Interface | ESP32 Pin | Notes |
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ideaspark ESP32 + integrated 0.96" OLED (CH340) | — | — | SSD1306 128x64 hardwired to I2C |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO32**, RX→**GPIO35** | 5V logic, needs 5V supply |
 | LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
-| Gear Indicator Servo | SG90 or MG90S, 180° | PWM | **GPIO27** | Rotates disc to show 1/2/3/4/R/N |
-| Stepper Motor | 28BYJ-48 + ULN2003 | GPIO | IN1→**GPIO25**, IN2→**GPIO26**, IN3→**GPIO32**, IN4→**GPIO33** | Drives slot-machine speed drum |
-| Home Sensor | Slotted opto-interrupter | Digital In | **GPIO13** | Active-HIGH when marker detected |
+| Gear Indicator Servo | SG90 or MG90S, 180° | PWM | **GPIO13** | Rotates disc to show 1/2/3/4/R/N |
+| Stepper Motor | 28BYJ-48 + ULN2003 | GPIO | IN1→**GPIO33**, IN2→**GPIO25**, IN3→**GPIO26**, IN4→**GPIO27** | Drives slot-machine speed drum |
+| Home Sensor | Slotted opto-interrupter | Digital In | **GPIO34** | Active-HIGH when marker detected, input-only pin |
 | OLED Display | SSD1306 128x64 (on-board) | I2C | SDA→**GPIO21**, SCL→**GPIO22** | Hardwired on ideaspark board, 0x3C, no dedicated RST |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |

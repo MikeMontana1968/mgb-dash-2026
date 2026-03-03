@@ -37,6 +37,31 @@ ESP_RIGHT = [
     (18, "GPIO16", 16),   (17, "GPIO4",  4),
     (16, "GPIO2",  2),
 ]
+# ═════════════════════════════════════════════════════════════════
+# ideaspark ESP32+OLED 0.96" board (30-pin, pin 1 at bottom near USB)
+# SSD1306 OLED hardwired to GPIO21 (SDA) / GPIO22 (SCL)
+# ═════════════════════════════════════════════════════════════════
+ISPARK_LEFT = [
+    (15, "EN",      None),
+    (14, "GPIO36",  36),   (13, "GPIO39", 39),
+    (12, "GPIO34",  34),   (11, "GPIO35", 35),
+    (10, "GPIO32",  32),   (9,  "GPIO33", 33),
+    (8,  "GPIO25",  25),   (7,  "GPIO26", 26),
+    (6,  "GPIO27",  27),   (5,  "GPIO14", 14),
+    (4,  "GPIO12",  12),   (3,  "GPIO13", 13),
+    (2,  "GND",     None), (1,  "VIN",    None),
+]
+ISPARK_RIGHT = [
+    (15, "GPIO23",  23),   (14, "GPIO22", 22),
+    (13, "TX0",     1),    (12, "RX0",    3),
+    (11, "GPIO21",  21),   (10, "GPIO19", 19),
+    (9,  "GPIO18",  18),   (8,  "GPIO5",  5),
+    (7,  "GPIO17",  17),   (6,  "GPIO16", 16),
+    (5,  "GPIO4",   4),    (4,  "GPIO2",  2),
+    (3,  "GPIO15",  15),   (2,  "GND",    None),
+    (1,  "3V3",     None),
+]
+
 ESP_ENVS = {
     "servo_fuel": {
         "title": "Servo Gauge \u2014 FUEL (SOC)",
@@ -54,12 +79,14 @@ ESP_ENVS = {
         "signals": {5: "CAN_TX", 4: "CAN_RX", 14: "LED_DATA", 27: "SERVO"},
     },
     "speedometer": {
-        "title": "Speedometer (ideaspark ESP32+OLED)",
+        "title": "Speedometer",
         "subtitle": "CAN + stepper + servo + LED ring + OLED (I2C, on-board)",
+        "board": "ideaspark",
         "signals": {
-            5: "CAN_TX", 4: "CAN_RX", 14: "LED_DATA", 27: "SERVO",
-            25: "STEP_IN1", 26: "STEP_IN2", 32: "STEP_IN3", 33: "STEP_IN4",
-            13: "STEP_HOME",
+            32: "CAN_TX", 35: "CAN_RX",
+            33: "STEP_IN1", 25: "STEP_IN2", 26: "STEP_IN3", 27: "STEP_IN4",
+            34: "STEP_HOME",
+            14: "LED_DATA", 13: "SERVO",
             21: "OLED_SDA", 22: "OLED_SCL",
         },
     },
@@ -243,6 +270,16 @@ def _draw_pin_right(d, f_gpio, f_sig, f_pin, signals,
 # ESP32 generator
 # ═════════════════════════════════════════════════════════════════
 def generate_esp32(env_name, env_data):
+    board = env_data.get("board", "devkit")
+    if board == "ideaspark":
+        left_pins, right_pins = ISPARK_LEFT, ISPARK_RIGHT
+        board_label = "ESP32"
+        title = f"MGB {env_data['title']} \u2014 ideaspark ESP32+OLED Pinout"
+    else:
+        left_pins, right_pins = ESP_LEFT, ESP_RIGHT
+        board_label = "ESP32"
+        title = f"MGB {env_data['title']} \u2014 ESP32 DevKit Pinout"
+
     NUM, PIN_SP, BD_W, PIN_R = 15, 38, 120, 4
     BD_TOP = 72
     PIN_Y0 = BD_TOP + 30
@@ -261,14 +298,13 @@ def generate_esp32(env_name, env_data):
     d = ImageDraw.Draw(img)
     f_title, f_sub, f_gpio, f_sig, f_pin = _fonts()
 
-    title = f"MGB {env_data['title']} \u2014 ESP32 DevKit Pinout"
     _draw_header(d, f_title, f_sub, f_pin, title, env_data.get("subtitle", ""),
-                 n_used, IMG_W, "ESP32", bx1, BD_TOP, bx2, BD_TOP + BD_H, usb=True)
+                 n_used, IMG_W, board_label, bx1, BD_TOP, bx2, BD_TOP + BD_H, usb=True)
 
-    for i, (pn, gl, gn) in enumerate(ESP_LEFT):
+    for i, (pn, gl, gn) in enumerate(left_pins):
         y = PIN_Y0 + i * PIN_SP
         _draw_pin_left(d, f_gpio, f_sig, f_pin, signals, y, pn, gl, gn, bx1, PIN_R)
-    for i, (pn, gl, gn) in enumerate(ESP_RIGHT):
+    for i, (pn, gl, gn) in enumerate(right_pins):
         y = PIN_Y0 + i * PIN_SP
         _draw_pin_right(d, f_gpio, f_sig, f_pin, signals, y, pn, gl, gn, bx2, PIN_R)
 
