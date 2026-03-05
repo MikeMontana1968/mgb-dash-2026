@@ -41,6 +41,14 @@ unsigned long lastRightMs = 0;
 unsigned long lastHazardMs = 0;
 static constexpr unsigned long TURN_HOLDOFF_MS = 600;
 
+// ── Turn blink pixel ranges (pixel 0 = 12 o'clock, clockwise) ────
+// TODO: refactor blink animation into a standalone function that
+//       accepts elapsed-ms, so Fuel and Amps share one implementation.
+static constexpr int RIGHT_BLINK_START = 1;   // pixels 1–5 = right half
+static constexpr int RIGHT_BLINK_END   = 5;
+static constexpr int LEFT_BLINK_START  = 7;   // pixels 7–11 = left half
+static constexpr int LEFT_BLINK_END    = 11;
+
 enum AnimState { ANIM_NONE, ANIM_HAZARD, ANIM_LEFT, ANIM_RIGHT };
 AnimState currentAnim = ANIM_NONE;
 
@@ -192,6 +200,9 @@ static void updateWarnings() {
 // Uses holdoff timer to bridge relay blink gaps.
 // ═════════════════════════════════════════════════════════════════════
 static void updateAnimations() {
+    // TEMP does not consume turn/hazard signals
+    if (ROLE == LogRole::TEMP) return;
+
     unsigned long now = millis();
 
     // Update holdoff timestamps from latest body flags
@@ -199,22 +210,31 @@ static void updateAnimations() {
     if (lastBodyFlags & BODY_FLAG_LEFT_TURN)  lastLeftMs   = now;
     if (lastBodyFlags & BODY_FLAG_RIGHT_TURN) lastRightMs  = now;
 
-    // Determine desired animation (hazard > left > right)
     bool hazardActive = lastHazardMs > 0 && (now - lastHazardMs) < TURN_HOLDOFF_MS;
     bool leftActive   = lastLeftMs   > 0 && (now - lastLeftMs)   < TURN_HOLDOFF_MS;
     bool rightActive  = lastRightMs  > 0 && (now - lastRightMs)  < TURN_HOLDOFF_MS;
 
     AnimState desired = ANIM_NONE;
-    if (hazardActive)      desired = ANIM_HAZARD;
-    else if (leftActive)   desired = ANIM_LEFT;
-    else if (rightActive)  desired = ANIM_RIGHT;
+    if (hazardActive) {
+        desired = ANIM_HAZARD;
+    } else if (ROLE == LogRole::FUEL) {
+        // FUEL sits on the left side — only responds to left turn
+        if (leftActive) desired = ANIM_LEFT;
+    } else if (ROLE == LogRole::AMPS) {
+        // AMPS sits on the right side — only responds to right turn
+        if (rightActive) desired = ANIM_RIGHT;
+    }
 
     // Only change animation on state transition
     if (desired != currentAnim) {
         switch (desired) {
             case ANIM_HAZARD: ledRing.startHazard();            break;
-            case ANIM_LEFT:   ledRing.startTurnSignal(true);    break;
-            case ANIM_RIGHT:  ledRing.startTurnSignal(false);   break;
+            case ANIM_LEFT:
+                ledRing.startPartialBlink(LEFT_BLINK_START, LEFT_BLINK_END);
+                break;
+            case ANIM_RIGHT:
+                ledRing.startPartialBlink(RIGHT_BLINK_START, RIGHT_BLINK_END);
+                break;
             case ANIM_NONE:   ledRing.stopAnimation();          break;
         }
         currentAnim = desired;
@@ -246,7 +266,19 @@ void setup() {
     }
 
     // ── Self-test at startup ─────────────────────────────────────────
-    runSelfTest();
+    // DEBUG: AMPS orientation + color test — remove when physical layout confirmed
+    if (ROLE == LogRole::AMPS) {
+        ESP_LOGI(TAG, "DEBUG: cardinal points — R/G/B/Y");
+        ledRing.setAll(0, 0, 0);
+        ledRing.setPixel(0,  255, 0, 0);      // 12 o'clock — RED
+        ledRing.setPixel(3,  0, 255, 0);      //  3 o'clock — GREEN
+        ledRing.setPixel(6,  0, 0, 255);      //  6 o'clock — BLUE
+        ledRing.setPixel(9,  255, 255, 0);    //  9 o'clock — YELLOW
+        ledRing.show();
+        while (true) { delay(1000); }
+    } else {
+        runSelfTest();
+    }
 
     canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
     ESP_LOGI(TAG, "Init complete.");

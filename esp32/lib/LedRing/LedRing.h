@@ -42,7 +42,10 @@ public:
     /** Start hazard animation (all LEDs flash amber). */
     void startHazard();
 
-    /** Stop turn/hazard animation. */
+    /** Start partial-ring 1 Hz amber blink, intensity matched to ambient. */
+    void startPartialBlink(int startPixel, int endPixel);
+
+    /** Stop turn/hazard/blink animation. */
     void stopAnimation();
 
     /** Set warning color (overrides ambient, e.g., bright red for alerts). */
@@ -84,6 +87,9 @@ private:
     uint8_t warnR_ = 0, warnG_ = 0, warnB_ = 0;
     unsigned long lastAnimStepMs_ = 0;
     int animStep_ = 0;
+    bool partialBlink_ = false;
+    int blinkStart_ = 0;
+    int blinkEnd_ = 0;
 
     void applyAmbient_();
 };

@@ -10,7 +10,6 @@ void LedRing::init(int dataPin, int numLeds) {
     numLeds_ = numLeds;
     strip_ = new Adafruit_NeoPixel(numLeds, dataPin, NEO_GRB + NEO_KHZ800);
     strip_->begin();
-    strip_->setBrightness(128);
     setAll(0, 0, 0);
     show();
 }
@@ -57,9 +56,18 @@ void LedRing::startHazard() {
     lastAnimStepMs_ = millis();
 }
 
+void LedRing::startPartialBlink(int startPixel, int endPixel) {
+    partialBlink_ = true;
+    animating_ = false;
+    hazardMode_ = false;
+    blinkStart_ = startPixel;
+    blinkEnd_ = endPixel;
+}
+
 void LedRing::stopAnimation() {
     animating_ = false;
     hazardMode_ = false;
+    partialBlink_ = false;
 }
 
 void LedRing::setWarning(uint8_t r, uint8_t g, uint8_t b) {
@@ -120,6 +128,16 @@ void LedRing::update() {
         setAll(0, 0, brightness);
     } else if (warningActive_) {
         setAll(warnR_, warnG_, warnB_);
+    } else if (partialBlink_) {
+        // 1 Hz partial-ring amber blink, intensity matched to ambient
+        applyAmbient_();
+        if ((millis() / 500) % 2 == 0) {
+            uint8_t r = ambientLevel_;
+            uint8_t g = (uint8_t)((165UL * ambientLevel_) / 255);
+            for (int i = blinkStart_; i <= blinkEnd_; i++) {
+                if (i >= 0 && i < numLeds_) setPixel(i, r, g, 0);
+            }
+        }
     } else if (animating_) {
         // TODO: Implement turn signal sweep and hazard flash animations
         // For now, simple amber flash placeholder
