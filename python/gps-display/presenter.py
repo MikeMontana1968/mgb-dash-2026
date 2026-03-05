@@ -46,6 +46,7 @@ class Presenter:
         self.fontMed        = ImageFont.truetype(f"{font_dir}/ArgentumSans-Light.ttf", 30)
         self.fontLarge      = ImageFont.truetype(f"{font_dir}/ArgentumSans-ExtraBold.ttf", 80)
         self.fontTiny       = ImageFont.truetype(f"{font_dir}/ArgentumSans-Light.ttf", 20)
+        self.ambient_category = 0
         self.newCanvas()
         self.counter = 0
         self.last_reported = 0
@@ -159,20 +160,31 @@ class Presenter:
         self.disp.ShowImage(self.CompostingImage)
 
     def newCanvas(self):
-        self.CompostingImage = Image.new("RGB", (self.disp.width, self.disp.height), "BLACK")
+        # TODO: remove debug background colors — temporary to diagnose ambient dimming
+        bg_map = {
+            0: (0, 0, 0),         # DAYLIGHT — black (normal)
+            1: (64, 64, 0),       # EARLY_TWILIGHT (dawn) — yellow
+            2: (40, 40, 80),      # LATE_TWILIGHT (dusk) — pale blue
+            3: (80, 80, 80),      # DARKNESS (night) — light grey
+        }
+        bg = bg_map.get(self.ambient_category, (0, 0, 0))
+        self.CompostingImage = Image.new("RGB", (self.disp.width, self.disp.height), bg)
         self.canvas = ImageDraw.Draw(self.CompostingImage)
         return self.canvas
 
     def set_backlight(self, ambient_category: int):
-        """Adjust LCD backlight PWM based on ambient light category.
+        """Adjust LCD backlight PWM and background based on ambient light category.
 
         Category mapping:
             0 (DAYLIGHT)        -> 100%
             1 (EARLY_TWILIGHT)  -> 70%
             2 (LATE_TWILIGHT)   -> 40%
-            3 (DARKNESS)        -> 15%
+            3 (DARKNESS)        -> 30%
+
+        TODO: remove debug background colors in newCanvas() once dimming is tuned.
         """
-        duty_map = {0: 100, 1: 70, 2: 40, 3: 15}
+        self.ambient_category = ambient_category
+        duty_map = {0: 100, 1: 70, 2: 40, 3: 30}
         duty = duty_map.get(ambient_category, 100)
         try:
             self.disp.bl_DutyCycle(duty)
