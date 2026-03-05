@@ -1,6 +1,6 @@
 # Servo Gauges (Fuel / Amps / Temp)
 
-Three 2-inch analog gauges driven by ESP32 + TJA1050 CAN transceiver. Each has a 180-degree servo needle and a 12-LED WS2812B ring for warnings and ambient lighting. All three share one codebase (`servo_gauge/main.cpp`), differentiated by build-time `GAUGE_ROLE` constant.
+Three 2-inch analog gauges driven by ESP32 + TJA1050 CAN transceiver. Each has a 180-degree servo needle and a 12-LED SK6812 RGBW ring for warnings and ambient lighting. All three share one codebase (`servo_gauge/main.cpp`), differentiated by build-time `GAUGE_ROLE` constant.
 
 <img src="../../../docs/images/fuel.JPG" alt="Fuel gauge" width="400">
 
@@ -11,7 +11,7 @@ Three 2-inch analog gauges driven by ESP32 + TJA1050 CAN transceiver. Each has a
 | MCU | ESP32-WROOM-32 DevKit | — | — | |
 | CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
 | Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | LEDC channel |
-| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
+| LED Ring | SK6812 RGBW, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel (NEO_GRBW) |
 | Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
 | CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
 

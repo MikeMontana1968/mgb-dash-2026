@@ -1,6 +1,6 @@
 # Speedometer
 
-Stepper-motor slot-machine speed display with servo gear indicator, OLED odometer, and 12-LED WS2812B ring. ESP32 with integrated SSD1306 OLED (128x64, I2C) + TJA1050 CAN transceiver. Receives speed, gear, and odometer from the body controller over CAN.
+Stepper-motor slot-machine speed display with servo gear indicator, OLED odometer, and 12-LED SK6812 RGBW ring. ESP32 with integrated SSD1306 OLED (128x64, I2C) + TJA1050 CAN transceiver. Receives speed, gear, and odometer from the body controller over CAN.
 
 ## Components
 
@@ -8,7 +8,7 @@ Stepper-motor slot-machine speed display with servo gear indicator, OLED odomete
 |-----------|-------------|-----------|-----------|-------|
 | MCU | ideaspark ESP32 + integrated 0.96" OLED (CH340) | — | — | SSD1306 128x64 hardwired to I2C |
 | CAN Transceiver | TJA1050 | TWAI | TX→**GPIO32**, RX→**GPIO35** | 5V logic, needs 5V supply |
-| LED Ring | WS2812B, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel |
+| LED Ring | SK6812 RGBW, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel (NEO_GRBW) |
 | Gear Indicator Servo | SG90 or MG90S, 180° | PWM | **GPIO13** | Rotates disc to show 1/2/3/4/R/N |
 | Stepper Motor | 28BYJ-48 + ULN2003 | GPIO | IN1→**GPIO33**, IN2→**GPIO25**, IN3→**GPIO26**, IN4→**GPIO27** | Drives slot-machine speed drum |
 | Home Sensor | Slotted opto-interrupter | Digital In | **GPIO34** | Active-HIGH when marker detected, input-only pin |

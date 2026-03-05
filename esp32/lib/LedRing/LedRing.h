@@ -1,11 +1,11 @@
 #pragma once
 /**
- * MGB Dash 2026 — WS2812B LED Ring Library
+ * MGB Dash 2026 — SK6812 RGBW LED Ring Library
  *
  * Drives 12-pixel LED ring for gauge backlighting, turn signals,
  * warning colors, and ambient light blending.
  *
- * Uses Adafruit NeoPixel library (NEO_GRB, 800 KHz).
+ * Uses Adafruit NeoPixel library (NEO_GRBW, 800 KHz).
  */
 
 #include <Arduino.h>
@@ -16,7 +16,7 @@ class LedRing {
 public:
     /**
      * Initialize LED ring.
-     * @param dataPin  GPIO for WS2812B data line
+     * @param dataPin  GPIO for SK6812 RGBW data line
      * @param numLeds  Number of LEDs in the ring
      */
     void init(int dataPin, int numLeds);

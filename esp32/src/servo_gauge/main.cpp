@@ -266,19 +266,7 @@ void setup() {
     }
 
     // ── Self-test at startup ─────────────────────────────────────────
-    // DEBUG: AMPS orientation + color test — remove when physical layout confirmed
-    if (ROLE == LogRole::AMPS) {
-        ESP_LOGI(TAG, "DEBUG: cardinal points — R/G/B/Y");
-        ledRing.setAll(0, 0, 0);
-        ledRing.setPixel(0,  255, 0, 0);      // 12 o'clock — RED
-        ledRing.setPixel(3,  0, 255, 0);      //  3 o'clock — GREEN
-        ledRing.setPixel(6,  0, 0, 255);      //  6 o'clock — BLUE
-        ledRing.setPixel(9,  255, 255, 0);    //  9 o'clock — YELLOW
-        ledRing.show();
-        while (true) { delay(1000); }
-    } else {
-        runSelfTest();
-    }
+    runSelfTest();
 
     canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
     ESP_LOGI(TAG, "Init complete.");

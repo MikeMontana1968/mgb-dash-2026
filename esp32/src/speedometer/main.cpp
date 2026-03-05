@@ -4,7 +4,7 @@
  * CAN-driven mechanical speedometer:
  *   - 28BYJ-48 stepper needle (StepperWheel lib, cubic-eased)
  *   - Servo gear indicator disc (ServoGauge lib)
- *   - WS2812B LED ring (turn signals, hazards, ambient)
+ *   - SK6812 RGBW LED ring (turn signals, hazards, ambient)
  *   - SSD1306 OLED odometer (128x64, I2C, integrated on ESP32 board)
  *
  * All speed/gear/odometer data comes from body controller via CAN —

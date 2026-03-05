@@ -1,14 +1,14 @@
 /**
  * MGB Dash 2026 — LED Ring Library Implementation
  *
- * Adafruit NeoPixel driver for WS2812B rings (12 pixels, GRB, 800 KHz).
+ * Adafruit NeoPixel driver for SK6812 RGBW rings (12 pixels, GRBW, 800 KHz).
  */
 
 #include "LedRing.h"
 
 void LedRing::init(int dataPin, int numLeds) {
     numLeds_ = numLeds;
-    strip_ = new Adafruit_NeoPixel(numLeds, dataPin, NEO_GRB + NEO_KHZ800);
+    strip_ = new Adafruit_NeoPixel(numLeds, dataPin, NEO_GRBW + NEO_KHZ800);
     strip_->begin();
     setAll(0, 0, 0);
     show();
