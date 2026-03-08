@@ -273,8 +273,8 @@ void setup() {
 // Main loop
 // ═════════════════════════════════════════════════════════════════════
 void loop() {
-    heartbeat.update();
     canBus.checkErrors();
+    heartbeat.update();
     unsigned long now = millis();
 
     // ── CAN receive — drain queue ───────────────────────────────────

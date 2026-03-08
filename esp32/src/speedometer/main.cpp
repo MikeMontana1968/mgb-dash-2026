@@ -62,6 +62,8 @@ bool onboardLedState = false;
 // ── CAN silence watchdog ────────────────────────────────────────────
 bool canMessageReceived = false;
 bool canSilenceMode     = false;
+unsigned long lastFaultProbeMs = 0;
+static constexpr unsigned long FAULT_PROBE_INTERVAL_MS = 3000;
 
 // ── Turn signal / hazard holdoff ────────────────────────────────────
 unsigned long lastLeftMs   = 0;
@@ -406,8 +408,8 @@ void setup() {
 // ═════════════════════════════════════════════════════════════════════
 
 void loop() {
-    heartbeat.update();
     canBus.checkErrors();
+    heartbeat.update();
 
     // ── CAN receive — drain queue ───────────────────────────────────
     uint32_t id;
@@ -515,10 +517,34 @@ void loop() {
     if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {
         if (!canSilenceMode) {
             canSilenceMode = true;
+            lastFaultProbeMs = now;
             diagState = STATE_ERR;
             ledRing.startBluePulse();
             canLog.log(LogLevel::LOG_WARN, LogEvent::CAN_SILENCE);
             ESP_LOGW(TAG, "CAN silence — entering fault mode");
+        } else if ((now - lastFaultProbeMs) > FAULT_PROBE_INTERVAL_MS) {
+            lastFaultProbeMs = now;
+
+            twai_status_info_t status;
+            if (canBus.getStatus(status)) {
+                static const char* stateNames[] = {
+                    "STOPPED", "RUNNING", "BUS_OFF", "RECOVERING"
+                };
+                const char* stateName = (status.state <= TWAI_STATE_RECOVERING)
+                    ? stateNames[status.state] : "UNKNOWN";
+                ESP_LOGW(TAG, "Fault probe: state=%s tx_err_hw=%lu rx_err_hw=%lu "
+                         "tx_failed=%lu rx_missed=%lu arb_lost=%lu bus_err=%lu "
+                         "msgs_to_tx=%lu msgs_to_rx=%lu",
+                         stateName,
+                         status.tx_error_counter, status.rx_error_counter,
+                         status.tx_failed_count, status.rx_missed_count,
+                         status.arb_lost_count, status.bus_error_count,
+                         status.msgs_to_tx, status.msgs_to_rx);
+            } else {
+                ESP_LOGW(TAG, "Fault probe: bus_off=%d tx_err=%lu rx_err=%lu (status read failed)",
+                         canBus.isBusOff(), canBus.getTxErrorCount(), canBus.getRxErrorCount());
+            }
+            canBus.checkErrors();
         }
     }
     if (canMessageReceived && canSilenceMode) {

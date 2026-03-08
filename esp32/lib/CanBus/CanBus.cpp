@@ -87,18 +87,30 @@ void CanBus::checkErrors() {
     if (twai_get_status_info(&status) != ESP_OK) return;
 
     if (status.state == TWAI_STATE_BUS_OFF) {
-        busOff_ = true;
-        unsigned long now = millis();
-        if (now - lastRecoveryAttemptMs_ > RECOVERY_BACKOFF_MS) {
-            lastRecoveryAttemptMs_ = now;
-            ESP_LOGW(TAG, "Bus-off detected, attempting recovery...");
-            twai_initiate_recovery();
+        if (!busOff_) {
+            busOff_ = true;
+            ESP_LOGE(TAG, "Bus-off detected (tx_err=%lu, rx_err=%lu). "
+                     "Check CAN wiring and pin assignments.",
+                     status.tx_error_counter, status.rx_error_counter);
         }
     } else if (status.state == TWAI_STATE_RUNNING && busOff_) {
         busOff_ = false;
         ESP_LOGI(TAG, "Recovered from bus-off.");
     }
 
-    txErrorCount_ += status.tx_error_counter;
-    rxErrorCount_ += status.rx_error_counter;
+    // Track deltas — hardware registers are running totals, not increments
+    if (status.tx_error_counter > lastTxErrSnapshot_) {
+        txErrorCount_ += (status.tx_error_counter - lastTxErrSnapshot_);
+    }
+    lastTxErrSnapshot_ = status.tx_error_counter;
+
+    if (status.rx_error_counter > lastRxErrSnapshot_) {
+        rxErrorCount_ += (status.rx_error_counter - lastRxErrSnapshot_);
+    }
+    lastRxErrSnapshot_ = status.rx_error_counter;
+}
+
+bool CanBus::getStatus(twai_status_info_t& status) const {
+    if (!installed_) return false;
+    return twai_get_status_info(&status) == ESP_OK;
 }

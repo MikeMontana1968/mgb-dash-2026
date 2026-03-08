@@ -47,11 +47,16 @@ public:
     uint32_t getRxErrorCount() const { return rxErrorCount_; }
     bool isBusOff() const { return busOff_; }
 
+    /** Get TWAI status snapshot for diagnostics. Returns false on failure. */
+    bool getStatus(twai_status_info_t& status) const;
+
 private:
     bool installed_ = false;
     bool busOff_ = false;
     uint32_t txErrorCount_ = 0;
     uint32_t rxErrorCount_ = 0;
     unsigned long lastRecoveryAttemptMs_ = 0;
+    uint32_t lastTxErrSnapshot_ = 0;
+    uint32_t lastRxErrSnapshot_ = 0;
     static constexpr unsigned long RECOVERY_BACKOFF_MS = 500;
 };

@@ -27,8 +27,10 @@ ServoGauge servo;
 LeafCan leafCan;
 
 // ── CAN silence watchdog ────────────────────────────────────────────
-bool canMessageReceived = false;
+unsigned long lastCanRxMs = 0;
 bool canSilenceMode = false;
+unsigned long lastFaultProbeMs = 0;
+static constexpr unsigned long FAULT_PROBE_INTERVAL_MS = 3000;  // log + retry every 3s
 
 // ── Gauge value state ──────────────────────────────────────────────
 float gaugeValue = 0.0f;
@@ -273,15 +275,17 @@ void setup() {
 }
 
 void loop() {
-    heartbeat.update();
     canBus.checkErrors();
+    heartbeat.update();
 
     // ── CAN receive — drain queue ───────────────────────────────────
     uint32_t id;
     uint8_t data[8];
     uint8_t len;
     while (canBus.receive(id, data, len)) {
-        canMessageReceived = true;
+        lastCanRxMs = millis();
+        ESP_LOGD(TAG, "CAN RX: id=0x%03X len=%d data=%02X %02X %02X %02X %02X %02X %02X %02X",
+                 id, len, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
         // ── On-demand self-test via CAN 0x730 ────────────────────────
         if (id == CAN_ID_SELF_TEST) {
@@ -338,19 +342,49 @@ void loop() {
     updateWarnings();
 
     // ── CAN silence watchdog ────────────────────────────────────────
-    if (!canMessageReceived && millis() > CAN_SILENCE_TIMEOUT_MS) {
-        if (!canSilenceMode) {
-            canSilenceMode = true;
-            ledRing.startBluePulse();
-            canLog.log(LogLevel::LOG_WARN, LogEvent::CAN_SILENCE);
-            ESP_LOGW(TAG, "CAN silence — entering fault mode");
-        }
+    unsigned long now = millis();
+    bool canSilent = (now - lastCanRxMs) > CAN_SILENCE_TIMEOUT_MS && now > CAN_SILENCE_TIMEOUT_MS;
+
+    if (canSilent && !canSilenceMode) {
+        canSilenceMode = true;
+        lastFaultProbeMs = now;
+        ledRing.startBluePulse();
+        canLog.log(LogLevel::LOG_WARN, LogEvent::CAN_SILENCE);
+        ESP_LOGW(TAG, "CAN silence — entering fault mode");
     }
-    if (canMessageReceived && canSilenceMode) {
-        canSilenceMode = false;
-        ledRing.stopBluePulse();
-        canLog.log(LogLevel::LOG_INFO, LogEvent::BUS_RECOVERED);
-        ESP_LOGI(TAG, "CAN traffic resumed");
+
+    if (canSilenceMode) {
+        if (!canSilent) {
+            // Traffic resumed — exit fault mode
+            canSilenceMode = false;
+            ledRing.stopBluePulse();
+            canLog.log(LogLevel::LOG_INFO, LogEvent::BUS_RECOVERED);
+            ESP_LOGI(TAG, "CAN traffic resumed");
+        } else if ((now - lastFaultProbeMs) > FAULT_PROBE_INTERVAL_MS) {
+            // Periodic probe: log status + attempt TWAI recovery
+            lastFaultProbeMs = now;
+
+            twai_status_info_t status;
+            if (canBus.getStatus(status)) {
+                static const char* stateNames[] = {
+                    "STOPPED", "RUNNING", "BUS_OFF", "RECOVERING"
+                };
+                const char* stateName = (status.state <= TWAI_STATE_RECOVERING)
+                    ? stateNames[status.state] : "UNKNOWN";
+                ESP_LOGW(TAG, "Fault probe: state=%s tx_err_hw=%lu rx_err_hw=%lu "
+                         "tx_failed=%lu rx_missed=%lu arb_lost=%lu bus_err=%lu "
+                         "msgs_to_tx=%lu msgs_to_rx=%lu",
+                         stateName,
+                         status.tx_error_counter, status.rx_error_counter,
+                         status.tx_failed_count, status.rx_missed_count,
+                         status.arb_lost_count, status.bus_error_count,
+                         status.msgs_to_tx, status.msgs_to_rx);
+            } else {
+                ESP_LOGW(TAG, "Fault probe: bus_off=%d tx_err=%lu rx_err=%lu (status read failed)",
+                         canBus.isBusOff(), canBus.getTxErrorCount(), canBus.getRxErrorCount());
+            }
+            canBus.checkErrors();
+        }
     }
 
     ledRing.update();
