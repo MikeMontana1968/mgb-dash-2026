@@ -100,19 +100,33 @@ class SignalHandler:
 
 
 # ── GPSD Connection ───────────────────────────────────────────────────
-def WaitForGPSD(presenter, sig):
+_wait_heartbeat_counter = 0
+
+
+def WaitForGPSD(presenter, sig, can_bus=None, heartbeat_counter=0):
     """Two-phase startup: connect to gpsd, then wait for satellite fix.
 
     Phase 1: Connect to gpsd daemon (retry every 5s, display updates every 1s)
     Phase 2: Poll for fix.mode >= 2 (satellite fix, poll every 1s)
+    Sends heartbeats on CAN during the wait if can_bus is available.
     Returns True when fix acquired, False if shutdown requested.
     """
+    global _wait_heartbeat_counter
+    _wait_heartbeat_counter = heartbeat_counter
     start = time.monotonic()
+
+    def _tick(elapsed):
+        """Update display and send heartbeat each second."""
+        global _wait_heartbeat_counter
+        presenter.write_waiting(elapsed)
+        if can_bus is not None:
+            send_heartbeat(can_bus, _wait_heartbeat_counter)
+            _wait_heartbeat_counter += 1
 
     while sig.continue_looping():
         # Phase 1 — connect to gpsd daemon
         elapsed = int(time.monotonic() - start)
-        presenter.write_waiting(elapsed)
+        _tick(elapsed)
         logger.info("gpsd.connecting...")
         try:
             gpsd.connect()
@@ -124,14 +138,14 @@ def WaitForGPSD(presenter, sig):
                     return False
                 time.sleep(1)
                 elapsed = int(time.monotonic() - start)
-                presenter.write_waiting(elapsed)
+                _tick(elapsed)
             continue
 
         # Phase 2 — wait for satellite fix
         logger.info("gpsd connected, waiting for satellite fix...")
         while sig.continue_looping():
             elapsed = int(time.monotonic() - start)
-            presenter.write_waiting(elapsed)
+            _tick(elapsed)
             try:
                 fix = gpsd.get_current()
                 if fix.mode >= 2:
@@ -279,12 +293,6 @@ def main():
     # Initialize display
     presenter = Presenter(logger)
 
-    # Connect to gpsd and wait for satellite fix
-    if not WaitForGPSD(presenter, sig):
-        return  # shutdown during startup
-    logger.info("GPS Connected")
-    presenter.write("Ready!", "GREEN")
-
     # Initialize CAN bus (non-fatal if unavailable)
     can_bus = None
     can_listener = None
@@ -306,6 +314,20 @@ def main():
         can_listener.start()
 
     heartbeat_counter = 0
+
+    # Connect to gpsd and wait for satellite fix
+    if not WaitForGPSD(presenter, sig, can_bus, heartbeat_counter):
+        # Graceful shutdown during startup
+        if can_listener is not None:
+            can_listener.stop()
+        if can_bus is not None:
+            can_bus.shutdown()
+        return
+    logger.info("GPS Connected")
+    presenter.write("Ready!", "GREEN")
+
+    # Sync heartbeat counter from wait phase
+    heartbeat_counter = _wait_heartbeat_counter
     has_fix = True  # just came out of WaitForGPSD with a valid fix
 
     can_log(can_bus, LogRole.GPS, LogLevel.LOG_INFO, LogEvent.GPS_FIX_ACQUIRED)
