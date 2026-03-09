@@ -6,14 +6,14 @@ Three 2-inch analog gauges driven by ESP32 + TJA1050 CAN transceiver. Each has a
 
 ## Components
 
-| Component | Part / Model | Interface | ESP32 Pin | Notes |
-|-----------|-------------|-----------|-----------|-------|
-| MCU | ESP32-WROOM-32 DevKit | — | — | |
-| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO5**, RX→**GPIO4** | 5V logic, needs 5V supply |
-| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | LEDC channel |
-| LED Ring | SK6812 RGBW, 12 LEDs | Data | **GPIO14** | Adafruit NeoPixel (NEO_GRBW) |
-| Voltage Regulator | LM2596 or similar | — | — | Vehicle 12V → 5V |
-| CAN Termination | 120 ohm resistor | — | — | End-of-bus nodes only |
+| Component | Part / Model | Interface | Fuel Pin | Amps Pin | Temp Pin | Notes |
+|-----------|-------------|-----------|----------|----------|----------|-------|
+| MCU | ESP32-WROOM-32 DevKit | — | — | — | — | |
+| CAN Transceiver | TJA1050 | TWAI | TX→**GPIO12**, RX→**GPIO26** | TX→**GPIO12**, RX→**GPIO26** | TX→**GPIO26**, RX→**GPIO25** | 5V logic, needs 5V supply |
+| Servo Motor | SG90 or MG90S, 180° | PWM | **GPIO27** | **GPIO27** | **GPIO14** | LEDC channel |
+| LED Ring | SK6812 RGBW, 12 LEDs | Data | **GPIO14** | **GPIO14** | **GPIO27** | Adafruit NeoPixel (NEO_GRBW) |
+| Voltage Regulator | LM2596 or similar | — | — | — | — | Vehicle 12V → 5V |
+| CAN Termination | 120 ohm resistor | — | — | — | — | End-of-bus nodes only |
 
 ## CAN Messages
 
