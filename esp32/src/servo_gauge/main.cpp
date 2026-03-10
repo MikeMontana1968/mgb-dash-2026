@@ -3,6 +3,8 @@
  *
  * Shared entry point for FUEL, AMPS, and TEMP servo gauges.
  * Build-time constant GAUGE_ROLE selects behavior.
+ * Optional OLED diagnostic display when HAS_OLED is defined
+ * (ideaspark ESP32+OLED board, SSD1306 128x64 I2C).
  */
 
 #include <Arduino.h>
@@ -15,6 +17,10 @@
 #include "ServoGauge.h"
 #include "LeafCan.h"
 #include "can_ids.h"
+#ifdef HAS_OLED
+#include <Wire.h>
+#include "Adafruit_SSD1306.h"
+#endif
 
 static const char* TAG = GAUGE_ROLE_NAME;
 static constexpr LogRole ROLE = LOG_ROLE;
@@ -56,6 +62,118 @@ AnimState currentAnim = ANIM_NONE;
 
 // ── Body state flags (from 0x710) ──────────────────────────────────
 uint8_t lastBodyFlags = 0;
+
+// ── CAN RX counter (for diagnostics) ──────────────────────────────
+uint32_t canRxCount = 0;
+
+#ifdef HAS_OLED
+// ── OLED diagnostic display (SSD1306 128x64, I2C) ─────────────────
+static constexpr int OLED_WIDTH  = 128;
+static constexpr int OLED_HEIGHT = 64;
+Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
+bool oledReady = false;
+
+unsigned long lastOledRefreshMs = 0;
+static constexpr unsigned long OLED_REFRESH_MS = 250;
+
+// Onboard LED heartbeat (GPIO2, 1 Hz)
+static constexpr int PIN_ONBOARD_LED = 2;
+unsigned long lastLedToggleMs = 0;
+bool onboardLedState = false;
+
+enum DiagState { STATE_INIT, STATE_TEST, STATE_IDLE, STATE_RUN, STATE_ERR };
+static const char* const STATE_NAMES[] = { "INIT", "TEST", "IDLE", "RUN", "ERR" };
+DiagState diagState = STATE_INIT;
+
+// ── OLED splash screen ─────────────────────────────────────────────
+static void oledDrawSplash() {
+    if (!oledReady) return;
+    oled.clearDisplay();
+    oled.setTextColor(SSD1306_WHITE);
+
+    // Role name in yellow zone (y=0, size 2 = 16px)
+    oled.setTextSize(2);
+    int16_t x1, y1;
+    uint16_t w, h;
+    oled.getTextBounds(GAUGE_ROLE_NAME, 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, 0);
+    oled.print(GAUGE_ROLE_NAME);
+
+    // Version in blue zone (centered)
+    char verBuf[24];
+    snprintf(verBuf, sizeof(verBuf), "v%d.%s.%.7s",
+             VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
+    oled.setTextSize(1);
+    oled.getTextBounds(verBuf, 0, 0, &x1, &y1, &w, &h);
+    oled.setCursor((OLED_WIDTH - w) / 2, 30);
+    oled.print(verBuf);
+
+    oled.display();
+}
+
+// ── OLED diagnostic display (two-zone layout) ──────────────────────
+//   Yellow band (y=0-15):  state word + CAN rx count
+//   Blue zone  (y=16-63):  gauge value, CAN stats, version
+static void oledDrawDiagnostics() {
+    if (!oledReady) return;
+    oled.clearDisplay();
+    oled.setTextColor(SSD1306_WHITE);
+
+    // ── Yellow zone (0-15): state name (size 2) + rx count (size 1) ──
+    oled.setTextSize(2);
+    oled.setCursor(0, 0);
+    oled.print(STATE_NAMES[diagState]);
+
+    // CAN rx count — right-aligned, size 1
+    char rxBuf[12];
+    snprintf(rxBuf, sizeof(rxBuf), "%lu", (unsigned long)canRxCount);
+    oled.setTextSize(1);
+    int rxLen = strlen(rxBuf) * 6;
+    oled.setCursor(OLED_WIDTH - rxLen, 4);
+    oled.print(rxBuf);
+
+    // ── Blue zone (16-63): diagnostic values ─────────────────────────
+    char buf[22];
+
+    // Line 1 (y=18): Gauge value + unit
+    if (ROLE == LogRole::FUEL) {
+        snprintf(buf, sizeof(buf), "SOC  %.1f %%", gaugeValue);
+    } else if (ROLE == LogRole::AMPS) {
+        snprintf(buf, sizeof(buf), "AMPS %.1f A", gaugeValue);
+    } else if (ROLE == LogRole::TEMP) {
+        snprintf(buf, sizeof(buf), "TEMP %.1f C", gaugeValue);
+    }
+    oled.setCursor(0, 18);
+    oled.print(buf);
+
+    // Line 2 (y=28): Servo angle
+    snprintf(buf, sizeof(buf), "SERVO %d deg", servo.getCurrentAngle());
+    oled.setCursor(0, 28);
+    oled.print(buf);
+
+    // Line 3 (y=40): CAN status
+    if (canSilenceMode) {
+        oled.setCursor(0, 40);
+        oled.print("CAN: SILENT");
+    } else if (lastGaugeUpdateMs > 0 && (millis() - lastGaugeUpdateMs) > GAUGE_STALE_MS) {
+        oled.setCursor(0, 40);
+        oled.print("CAN: STALE");
+    } else {
+        snprintf(buf, sizeof(buf), "CAN: OK  %lums ago",
+                 lastCanRxMs > 0 ? (millis() - lastCanRxMs) : 0UL);
+        oled.setCursor(0, 40);
+        oled.print(buf);
+    }
+
+    // Line 4 (y=54): Version
+    snprintf(buf, sizeof(buf), "v%d.%s.%.7s",
+             VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
+    oled.setCursor(0, 54);
+    oled.print(buf);
+
+    oled.display();
+}
+#endif
 
 // ── Color wheel helper ──────────────────────────────────────────────
 static void wheelToRGB(uint8_t pos, uint8_t &r, uint8_t &g, uint8_t &b) {
@@ -245,15 +363,37 @@ static void updateAnimations() {
 
 void setup() {
     Serial.begin(115200);
-    ESP_LOGI(TAG, "Servo gauge starting...");
+
+#ifdef HAS_OLED
+    pinMode(PIN_ONBOARD_LED, OUTPUT);
+    digitalWrite(PIN_ONBOARD_LED, LOW);
+#endif
+
+    char versionStr[48];
+    snprintf(versionStr, sizeof(versionStr), "%s v%d.%s.%s",
+             GAUGE_ROLE_NAME, VERSION_MILESTONE, VERSION_DATE, VERSION_HASH);
+    ESP_LOGI(TAG, "%s starting...", versionStr);
 
     canLog.init(&canBus, LOG_ROLE);
-    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START);
+    canLog.log(LogLevel::LOG_CRITICAL, LogEvent::BOOT_START, 0, versionStr);
 
     canBus.init(PIN_CAN_TX, PIN_CAN_RX, CAN_BUS_SPEED);
     heartbeat.init(&canBus, GAUGE_ROLE_NAME);
     ledRing.init(PIN_LED_DATA, LED_COUNT);
     servo.init(PIN_SERVO);
+
+#ifdef HAS_OLED
+    // ── OLED init + splash screen ─────────────────────────────────────
+    Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
+    if (oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        oledReady = true;
+        ESP_LOGI(TAG, "OLED init OK (128x64 @ 0x3C)");
+        oledDrawSplash();
+        delay(2000);
+    } else {
+        ESP_LOGW(TAG, "OLED init FAILED — diagnostic display unavailable");
+    }
+#endif
 
     // ── Gauge-specific servo range and damping ────────────────────────
     if (ROLE == LogRole::FUEL) {
@@ -268,7 +408,31 @@ void setup() {
     }
 
     // ── Self-test at startup ─────────────────────────────────────────
+#ifdef HAS_OLED
+    diagState = STATE_TEST;
+#endif
     runSelfTest();
+
+#ifdef HAS_OLED
+    // ── OLED self-test phase ──────────────────────────────────────────
+    if (oledReady) {
+        oled.clearDisplay();
+        oled.fillRect(0, 0, OLED_WIDTH, OLED_HEIGHT, SSD1306_WHITE);
+        oled.display();
+        delay(200);
+        oled.clearDisplay();
+        oled.setTextColor(SSD1306_WHITE);
+        oled.setTextSize(2);
+        int16_t x1, y1;
+        uint16_t w, h;
+        oled.getTextBounds("DIAG OK", 0, 0, &x1, &y1, &w, &h);
+        oled.setCursor((OLED_WIDTH - w) / 2, (OLED_HEIGHT - h) / 2);
+        oled.print("DIAG OK");
+        oled.display();
+        delay(500);
+    }
+    diagState = STATE_IDLE;
+#endif
 
     canLog.log(LogLevel::LOG_INFO, LogEvent::BOOT_COMPLETE, millis());
     ESP_LOGI(TAG, "Init complete.");
@@ -284,6 +448,7 @@ void loop() {
     uint8_t len;
     while (canBus.receive(id, data, len)) {
         lastCanRxMs = millis();
+        canRxCount++;
         ESP_LOGD(TAG, "CAN RX: id=0x%03X len=%d data=%02X %02X %02X %02X %02X %02X %02X %02X",
                  id, len, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
@@ -389,4 +554,30 @@ void loop() {
 
     ledRing.update();
     servo.update();
+
+#ifdef HAS_OLED
+    // ── State tracking ────────────────────────────────────────────────
+    if (canRxCount > 0 && diagState == STATE_IDLE) {
+        diagState = STATE_RUN;
+    }
+    if (canSilenceMode && diagState != STATE_ERR) {
+        diagState = STATE_ERR;
+    }
+    if (!canSilenceMode && diagState == STATE_ERR) {
+        diagState = STATE_RUN;
+    }
+
+    // ── OLED diagnostic refresh (4 Hz) ────────────────────────────────
+    if (now - lastOledRefreshMs >= OLED_REFRESH_MS) {
+        lastOledRefreshMs = now;
+        oledDrawDiagnostics();
+    }
+
+    // ── Onboard LED heartbeat (1 Hz toggle) ───────────────────────────
+    if (now - lastLedToggleMs >= 500) {
+        lastLedToggleMs = now;
+        onboardLedState = !onboardLedState;
+        digitalWrite(PIN_ONBOARD_LED, onboardLedState ? HIGH : LOW);
+    }
+#endif
 }
