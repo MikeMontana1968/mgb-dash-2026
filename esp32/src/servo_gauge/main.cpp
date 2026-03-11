@@ -121,20 +121,31 @@ static void oledDrawDiagnostics() {
     oled.clearDisplay();
     oled.setTextColor(SSD1306_WHITE);
 
-    // ── Yellow zone (0-15): state name (size 2) + rx count (size 1) ──
+    // ── Yellow zone (0-15): state name (size 2) + uptime (size 1) ────
     oled.setTextSize(2);
     oled.setCursor(0, 0);
     oled.print(STATE_NAMES[diagState]);
 
-    // CAN rx count — right-aligned, size 1, last 4 digits only
-    char rxBuf[8];
-    snprintf(rxBuf, sizeof(rxBuf), "%04lu", (unsigned long)(canRxCount % 10000));
+    // Uptime — right-aligned, size 1, e.g. "2h 14m 7s"
+    unsigned long uptimeSec = millis() / 1000;
+    unsigned long h = uptimeSec / 3600;
+    unsigned long m = (uptimeSec % 3600) / 60;
+    unsigned long s = uptimeSec % 60;
+    char upBuf[16];
+    if (h > 0) {
+        snprintf(upBuf, sizeof(upBuf), "%luh %lum %lus", h, m, s);
+    } else if (m > 0) {
+        snprintf(upBuf, sizeof(upBuf), "%lum %lus", m, s);
+    } else {
+        snprintf(upBuf, sizeof(upBuf), "%lus", s);
+    }
     oled.setTextSize(1);
-    int rxLen = strlen(rxBuf) * 6;
-    oled.setCursor(OLED_WIDTH - rxLen, 4);
-    oled.print(rxBuf);
+    int upLen = strlen(upBuf) * 6;
+    oled.setCursor(OLED_WIDTH - upLen, 4);
+    oled.print(upBuf);
 
     // ── Blue zone (16-63): diagnostic values ─────────────────────────
+    oled.setTextSize(1);
     char buf[22];
 
     // Line 1 (y=18): Gauge value + unit
@@ -153,7 +164,7 @@ static void oledDrawDiagnostics() {
     oled.setCursor(0, 28);
     oled.print(buf);
 
-    // Line 3 (y=40): CAN status
+    // Line 3 (y=40): CAN status + rx count (right-aligned)
     if (canSilenceMode) {
         oled.setCursor(0, 40);
         oled.print("CAN: SILENT");
@@ -161,11 +172,14 @@ static void oledDrawDiagnostics() {
         oled.setCursor(0, 40);
         oled.print("CAN: STALE");
     } else {
-        snprintf(buf, sizeof(buf), "CAN: OK  %lums ago",
-                 lastCanRxMs > 0 ? (millis() - lastCanRxMs) : 0UL);
         oled.setCursor(0, 40);
-        oled.print(buf);
+        oled.print("CAN: OK");
     }
+    char rxBuf[8];
+    snprintf(rxBuf, sizeof(rxBuf), "%04lu", (unsigned long)(canRxCount % 10000));
+    int rxLen = strlen(rxBuf) * 6;
+    oled.setCursor(OLED_WIDTH - rxLen, 40);
+    oled.print(rxBuf);
 
     // Line 4 (y=54): Version
     snprintf(buf, sizeof(buf), "v%d.%s.%.7s",
