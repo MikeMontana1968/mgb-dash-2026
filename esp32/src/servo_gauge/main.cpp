@@ -40,8 +40,10 @@ static constexpr unsigned long FAULT_PROBE_INTERVAL_MS = 3000;  // log + retry e
 
 // ── Gauge value state ──────────────────────────────────────────────
 float gaugeValue = 0.0f;
+float lastLoggedGaugeValue = 0.0f;
 unsigned long lastGaugeUpdateMs = 0;
 static constexpr unsigned long GAUGE_STALE_MS = 2000;
+static constexpr float GAUGE_LOG_DEADBAND = 2.0f;  // log when value changes by ≥2A
 
 // ── Turn signal / hazard holdoff ───────────────────────────────────
 unsigned long lastLeftMs = 0;
@@ -124,9 +126,9 @@ static void oledDrawDiagnostics() {
     oled.setCursor(0, 0);
     oled.print(STATE_NAMES[diagState]);
 
-    // CAN rx count — right-aligned, size 1
-    char rxBuf[12];
-    snprintf(rxBuf, sizeof(rxBuf), "%lu", (unsigned long)canRxCount);
+    // CAN rx count — right-aligned, size 1, last 4 digits only
+    char rxBuf[8];
+    snprintf(rxBuf, sizeof(rxBuf), "%04lu", (unsigned long)(canRxCount % 10000));
     oled.setTextSize(1);
     int rxLen = strlen(rxBuf) * 6;
     oled.setCursor(OLED_WIDTH - rxLen, 4);
@@ -347,6 +349,8 @@ static void updateAnimations() {
 
     // Only change animation on state transition
     if (desired != currentAnim) {
+        static const char* const ANIM_NAMES[] = { "NONE", "HAZARD", "LEFT", "RIGHT" };
+        ESP_LOGI(TAG, "Anim: %s -> %s", ANIM_NAMES[currentAnim], ANIM_NAMES[desired]);
         switch (desired) {
             case ANIM_HAZARD: ledRing.startHazard();            break;
             case ANIM_LEFT:
@@ -480,6 +484,10 @@ void loop() {
                 BatteryStatus bs = LeafCan::decodeBatteryStatus(data);
                 gaugeValue = bs.currentA;
                 lastGaugeUpdateMs = millis();
+                if (fabsf(gaugeValue - lastLoggedGaugeValue) >= GAUGE_LOG_DEADBAND) {
+                    ESP_LOGI(TAG, "Amps: %.1f A (was %.1f A)", gaugeValue, lastLoggedGaugeValue);
+                    lastLoggedGaugeValue = gaugeValue;
+                }
             }
         } else if (ROLE == LogRole::TEMP) {
             if (id == CAN_ID_LEAF_BATTERY_TEMP) {

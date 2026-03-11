@@ -151,7 +151,7 @@ python python/tools/codegen.py
 | Module | Status | Notes |
 |--------|--------|-------|
 | **Body Controller** | Bench-tested | GPIO signals confirmed (bench 2026-03-03), CAN broadcast live (0x710–0x713), hall sensor, gear estimation, odometer/NVS, hazard timing detection |
-| **Servo Gauges (x3)** | Loop complete | CAN decode per role, servo mapping, LED ring warnings, turn signal/hazard animations, ambient light, stale data detection |
+| **Servo Gauges (x3)** | All working | CAN decode per role, servo mapping, LED ring warnings, turn signal/hazard animations, ambient light, stale data detection. All 3 confirmed on CAN bus. Amps on ideaspark ESP32+OLED with OLED diagnostics. |
 | **Speedometer** | Loop complete | Stepper needle (CAN-driven), servo gear indicator, turn signal/hazard LEDs, ambient light, self-test |
 | **LeafCan decoder** | Complete | All 9 Leaf + Resolve CAN messages decoded |
 | **Primary Display** | Phase 1+2 complete | pycairo+pygame, 5 contexts, alert system, CAN receive, clock sync |
@@ -161,8 +161,9 @@ python python/tools/codegen.py
 
 ### Not Yet Implemented
 
-- OLED odometer hardware testing (driver implemented, needs on-board verification)
+- Speedometer CAN — goes bus-off immediately, suspected loose wire from bench work
 - Primary Display Phase 3 (ReplaySource)
+- Waveshare DSI display — blocked, need 12cm same-side-contacts cable
 - Phone app BLE and UI logic
 - Tool scripts (stubs only — no python-can integration)
 - CI/CD, testing infrastructure, git hooks
@@ -193,3 +194,10 @@ python python/tools/codegen.py
 - **LED ring model corrected** — rings are **SK6812 RGBW** (Adafruit #2852), not WS2812B. RGBW uses 4 bytes per pixel; the old `NEO_GRB` (3 bytes) caused shifted data after pixel 0, producing wrong colors on all subsequent pixels. Fixed: `NEO_GRBW + NEO_KHZ800`.
 - **Hardware additions** — 330Ω series resistor on data line (GPIO14→DIN) + 100µF 20V electrolytic cap across VCC/GND installed. Good practice but were not the root cause.
 - **Pixel mapping confirmed** — pixel 0 = 12 o'clock (red), pixel 3 = 3 o'clock (green), pixel 6 = 6 o'clock (blue), pixel 9 = 9 o'clock (yellow). Cardinal test passed, debug code removed, normal self-test restored.
+
+### 2026-03-11 — Amps gauge fully working, OLED display improvements
+
+- **Amps gauge CAN confirmed working** — root cause was a bad/malfunctioning TJA1050 transceiver breakout board. Replaced with known-good unit. All four subsystems now operational: OLED display, LED ring, servo, and CAN bus. All three servo gauges (Fuel, Amps, Temp) now have working CAN.
+- **Amps log level** — filtered from DEBUG to INFO (`CORE_DEBUG_LEVEL=3`) to reduce serial output noise on the Amps module.
+- **Amps INFO logging** — added ESP_LOGI messages for animation state changes (right turn on/off, hazard) and amps value changes with 2A dead-band to avoid log flooding.
+- **OLED CAN counter (Amps + Speedometer)** — display now shows last 4 digits of CAN RX count (zero-padded, rolls 9999→0000) instead of unbounded full number that would outgrow the display.

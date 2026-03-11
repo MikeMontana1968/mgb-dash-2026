@@ -151,9 +151,9 @@ static void oledDrawDiagnostics() {
     oled.setCursor(0, 0);
     oled.print(STATE_NAMES[diagState]);
 
-    // CAN rx count — right-aligned, size 1, vertically centered in yellow
-    char rxBuf[12];
-    snprintf(rxBuf, sizeof(rxBuf), "%lu", (unsigned long)canRxCount);
+    // CAN rx count — right-aligned, size 1, last 4 digits, vertically centered in yellow
+    char rxBuf[8];
+    snprintf(rxBuf, sizeof(rxBuf), "%04lu", (unsigned long)(canRxCount % 10000));
     oled.setTextSize(1);
     int rxLen = strlen(rxBuf) * 6;
     oled.setCursor(OLED_WIDTH - rxLen, 4);
