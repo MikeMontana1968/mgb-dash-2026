@@ -21,6 +21,9 @@
 #include <Wire.h>
 #include "Adafruit_SSD1306.h"
 #endif
+#ifdef HAS_BLE
+#include "BleBridge.h"
+#endif
 
 static const char* TAG = GAUGE_ROLE_NAME;
 static constexpr LogRole ROLE = LOG_ROLE;
@@ -31,6 +34,14 @@ CanLog canLog;
 LedRing ledRing;
 ServoGauge servo;
 LeafCan leafCan;
+#ifdef HAS_BLE
+BleBridge bleBridge;
+
+// IDs to bridge over BLE: GPS frames (0x720-0x727) + body state (0x710)
+static inline bool shouldBridge(uint32_t id) {
+    return (id >= 0x720 && id <= 0x727) || id == 0x710;
+}
+#endif
 
 // ── CAN silence watchdog ────────────────────────────────────────────
 unsigned long lastCanRxMs = 0;
@@ -413,6 +424,10 @@ void setup() {
     }
 #endif
 
+#ifdef HAS_BLE
+    bleBridge.init("MGB-AMPS");
+#endif
+
     // ── Gauge-specific servo range and damping ────────────────────────
     if (ROLE == LogRole::FUEL) {
         servo.setRange(0.0f, 100.0f);      // SOC 0–100%
@@ -469,6 +484,13 @@ void loop() {
         canRxCount++;
         ESP_LOGD(TAG, "CAN RX: id=0x%03X len=%d data=%02X %02X %02X %02X %02X %02X %02X %02X",
                  id, len, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+
+#ifdef HAS_BLE
+        // ── Bridge selected CAN frames to BLE ────────────────────────
+        if (shouldBridge(id)) {
+            bleBridge.notifyCanFrame(id, data, len);
+        }
+#endif
 
         // ── On-demand self-test via CAN 0x730 ────────────────────────
         if (id == CAN_ID_SELF_TEST) {

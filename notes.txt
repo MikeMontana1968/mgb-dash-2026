@@ -1,0 +1,33 @@
+MGB Dash 2026 — Build & Upload Commands
+========================================
+
+All commands run from the esp32/ directory:
+  cd esp32
+
+Build All:
+  pio run
+
+Servo Fuel (SOC gauge):
+  pio run -e servo_fuel
+  pio run -e servo_fuel -t upload -t monitor
+
+Servo Amps (current gauge):
+  pio run -e servo_amps
+  pio run -e servo_amps -t upload -t monitor
+
+Servo Temp (temperature gauge):
+  pio run -e servo_temp
+  pio run -e servo_temp -t upload -t monitor
+
+Speedometer:
+  pio run -e speedometer
+  pio run -e speedometer -t upload -t monitor
+
+Body Controller:
+  pio run -e body_controller
+  pio run -e body_controller -t upload -t monitor
+
+
+
+Serial Monitor (115200 baud):
+  pio device monitor -b 115200
